@@ -1,0 +1,63 @@
+{
+  "name": "Sabr — habits, quests & shield",
+  "short_name": "Sabr",
+  "description": "A habit tracker built on evidence-based behaviour change, the five daily prayers as anchors, and a recovery system designed against shame.",
+  "start_url": "./index.html#/today",
+  "scope": "./",
+  "id": "sabr-habit-app",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "categories": [
+    "health",
+    "lifestyle",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Urge SOS",
+      "short_name": "SOS",
+      "url": "./index.html#/shield",
+      "description": "Open the Shield section"
+    },
+    {
+      "name": "Start 2 minutes",
+      "short_name": "Focus",
+      "url": "./index.html#/focus",
+      "description": "Start a focus block"
+    },
+    {
+      "name": "Close the day",
+      "short_name": "Night",
+      "url": "./index.html#/night",
+      "description": "Shutdown ritual"
+    }
+  ]
+}

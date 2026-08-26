@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<title>Sabr — habits, quests & shield</title>
+<meta name="description" content="A habit tracker built on evidence-based behaviour change, the five daily prayers as anchors, and a recovery system designed against shame.">
+<meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sabr">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="src/ui/styles.css">
+</head>
+<body>
+
+<div id="app">
+  <header id="topbar" class="hidden" aria-label="Your progress"></header>
+  <main id="outlet"></main>
+  <nav id="nav" aria-label="Main"></nav>
+</div>
+
+<!-- Shown until main.js boots. Removed on first render. -->
+<div id="splash" style="position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:#fff;color:#3c3c3c">
+  <div style="text-align:center">
+    <div style="width:96px;height:96px;margin:0 auto;border-radius:50%;background:#58cc02;box-shadow:0 8px 0 #46a302;display:grid;place-items:center;font-size:3rem">&#x1F54B;</div>
+    <div style="margin-top:20px;font:800 1.5rem/1.2 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;letter-spacing:-.02em">Sabr</div>
+    <div id="splash-msg" style="margin-top:8px;font:700 .82rem/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#afafaf">loading…</div>
+  </div>
+</div>
+
+<noscript>
+  <div style="padding:32px;font:500 16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#3c3c3c;background:#fff">
+    <h1>JavaScript is required</h1>
+    <p>Sabr runs entirely in your browser with no server, so it needs JavaScript enabled.</p>
+  </div>
+</noscript>
+
+<script type="module" src="src/main.js"></script>
+<script>
+  // If the module never boots (old browser, bad load), say so instead of
+  // leaving the user staring at a splash screen forever.
+  setTimeout(function () {
+    var s = document.getElementById('splash-msg');
+    if (s && document.getElementById('splash')) {
+      s.textContent = 'Still loading — if this does not clear, try reloading the page.';
+    }
+  }, 6000);
+</script>
+</body>
+</html>
