@@ -44,14 +44,8 @@ export const questsScreen = {
           <div class="card">${raw(attrStrip(state))}</div>
         </div>
 
-        <div class="section-title"><span>Main quests</span>
-          <span class="muted" style="text-transform:none;letter-spacing:0">claim when they light up</span></div>
-        <div class="path">
-          ${raw(board.map((row, i) => pathNode(row, i, i === nextIndex)).join(''))}
-        </div>
-
-        <div class="section-title"><span>Side quests · today</span>
-          <span class="pill">optional</span></div>
+        <div class="section-title"><span>Today’s side quests</span>
+          <span class="muted" style="text-transform:none;letter-spacing:0">gone at midnight</span></div>
         ${sideOn ? raw(h`
           <div class="card" style="padding:10px 14px;margin-bottom:12px">
             ${raw(qaRow('Three offers, rolled fresh each morning',
@@ -60,6 +54,12 @@ export const questsScreen = {
           <div class="stack-sm">
             ${offers.map((q) => raw(sideQuestCard(q, state)))}
           </div>`) : raw(gateCard('sidequests'))}
+
+        <div class="section-title"><span>Main quests</span>
+          <span class="muted" style="text-transform:none;letter-spacing:0">running always · claim when lit</span></div>
+        <div class="path">
+          ${raw(board.map((row, i) => pathNode(row, i, i === nextIndex)).join(''))}
+        </div>
 
       </div>`;
   },

@@ -76,10 +76,11 @@ export const todayScreen = {
     const later = [
       state.academics.enabled ? classesBlock(state, key) : '',
       state.academics.enabled ? deadlinesBlock(state) : '',
-      offers.length ? h`
-        <div class="section-title"><span>Side quests</span>
-          <span class="muted" style="text-transform:none;letter-spacing:0">optional</span></div>
-        <div class="stack-sm">${offers.map((q) => raw(sideQuestCard(q, state)))}</div>` : '',
+      // The full cards used to be duplicated in here, two taps down, where a
+      // thing that expires at midnight is never seen. They live at the top of
+      // the Quests tab now; this is the pointer to them.
+      offers.length ? listLink('quests', icon('target'),
+        `Today’s side quests · ${offers.filter((q) => sideStatus(q.id, state) !== 'done').length} open`) : '',
       // Only advertise a module that is actually switched on — a shortcut into
       // a locked screen is a dead end dressed up as a suggestion.
       running || !isOwned('focus', state) ? '' : listLink('focus', icon('target'), 'Start a focus block'),
@@ -168,6 +169,7 @@ export const todayScreen = {
       toggle: (el, ds) => toggleHabit(ds.id, el),
       detail: (el, ds) => openHabitDetail(ds.id),
       library: () => go('habits/library'),
+      quests:  () => go('quests'),
       night:   () => go('night'),
       ledger:  () => go('ledger'),
       focus:   () => go('focus'),

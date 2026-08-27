@@ -2063,7 +2063,13 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
 /* An action on a toast — only ever "Undo". */
 .toast { display: flex; align-items: center; gap: 10px; }
 .toast__act {
+  /* The toast itself is pointer-events:none so it never blocks the screen
+     underneath. That silently made this button untappable on a real device —
+     it only ever "worked" under a scripted .click(), which bypasses hit
+     testing altogether. A child can take pointer events back. */
+  pointer-events: auto;
   flex: none; appearance: none; border: 0; cursor: pointer;
+  min-height: 40px; min-width: 76px;
   background: rgba(255, 255, 255, .18); color: inherit;
   font: inherit; font-size: .76rem; font-weight: 700;
   letter-spacing: .08em; text-transform: uppercase;

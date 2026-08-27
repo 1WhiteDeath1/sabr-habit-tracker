@@ -38,18 +38,51 @@ export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel
  * any element with data-act="name" inside `root` calls it, with the element and
  * its dataset. Survives re-renders because it is bound to the container.
  */
+/**
+ * How far a finger may travel between touching down and lifting and still
+ * count as a tap rather than as a scroll.
+ *
+ * On a phone the overwhelming cause of a habit being marked done by accident
+ * is not a mis-aimed tap, it is a scroll that begins on top of a control: the
+ * finger lands on a row, drags the list, lifts, and the browser still reports
+ * a click because the start and end elements match. Twelve pixels is below
+ * what anyone can hold still through a deliberate press and well under what a
+ * real scroll covers.
+ */
+const TAP_SLOP = 12;
+
 export function actions(root, map) {
-  if (root.__actionsBound) root.removeEventListener('click', root.__actionsBound);
+  if (root.__actionsBound) {
+    root.removeEventListener('click', root.__actionsBound);
+    root.removeEventListener('pointerdown', root.__actionsDown);
+  }
+
+  let downX = 0;
+  let downY = 0;
+  let moved = false;
+  const down = (ev) => {
+    downX = ev.clientX; downY = ev.clientY; moved = false;
+  };
+  const move = (ev) => {
+    if (Math.abs(ev.clientX - downX) > TAP_SLOP || Math.abs(ev.clientY - downY) > TAP_SLOP) moved = true;
+  };
+
   const handler = (ev) => {
     const target = ev.target.closest('[data-act]');
     if (!target || !root.contains(target)) return;
     const fn = map[target.dataset.act];
     if (!fn) return;
     ev.preventDefault();
+    // A click that arrived at the end of a drag is a scroll, not a decision.
+    if (moved) { moved = false; return; }
     fn(target, target.dataset, ev);
   };
+
+  root.addEventListener('pointerdown', down);
+  root.addEventListener('pointermove', move);
   root.addEventListener('click', handler);
   root.__actionsBound = handler;
+  root.__actionsDown = down;
 }
 
 /** Short vibration on meaningful taps. Silently ignored where unsupported. */

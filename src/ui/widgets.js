@@ -193,7 +193,9 @@ export function sideQuestCard(q, state = getState()) {
       <div class="row" style="align-items:flex-start;gap:11px">
         <span class="sq__icon">${icon(theme.icon, { size: 22 })}</span>
         <div class="grow">
-          <span class="pill pill--${raw(theme.tone)}">${icon(theme.icon, { size: 13 })} ${theme.label}</span>
+          <!-- The same glyph already sits in .sq__icon beside this. Two subtle
+               duotone SVGs read as one motif; two emoji read as a mistake. -->
+          <span class="pill pill--${raw(theme.tone)}">${theme.label}</span>
           <div style="font-weight:800;font-size:1rem;margin-top:6px">${q.title}</div>
           <div class="dim" style="font-size:.87rem;margin-top:3px;line-height:1.45;font-weight:500">${q.desc}</div>
           <div class="sidequest__why">${q.why}</div>
