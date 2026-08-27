@@ -4,6 +4,7 @@
 import { h, raw, actions, haptic, toast, sheet, confirmSheet, qaRow } from '../ui/dom.js';
 import { slotStatus, MAX_SLOTS } from '../core/comeback.js';
 import { DIFFICULTY, DIFFICULTY_ORDER, wallet, priceTag, difficultyOf, costOf } from '../core/economy.js';
+import { levelFromXp } from '../core/game.js';
 import { STAKE_KINDS, describeStake, accrue, settle, startStake, stopStake } from '../core/stake.js';
 import { isOwned } from '../core/unlocks.js';
 import { gateCard, gateMount } from '../ui/gate.js';
@@ -20,7 +21,7 @@ import { sfx } from '../core/audio.js';
 export const habitsScreen = {
   render(route) {
     const view = route.params[0];
-    if (view === 'library') return renderLibrary(route.params[1]);
+    if (view === 'library') return renderGallery(route.params[1]);
     if (view === 'edit') return renderEditor(route.params[1]);
     return renderList();
   },
@@ -220,7 +221,22 @@ function mountList(root) {
  * many run at once, not on which habit you are permitted to want.
  */
 function blocked(item) {
-  // Cost first: it is the most specific refusal and the easiest to act on.
+  // Rank before cost. A rank you have not reached cannot be solved by saving
+  // up, so telling someone the price of something they cannot buy at any price
+  // is the wrong refusal to lead with.
+  if (item) {
+    const tier = difficultyOf(item);
+    const d = DIFFICULTY[tier];
+    const level = levelFromXp(getState().game.xp).level;
+    if (level < d.minLevel) {
+      toast(`${d.emoji} ${d.label} habits open at level ${d.minLevel}. You are level ${level}.`,
+        { tone: 'warn', ms: 3400 });
+      sfx('deny');
+      haptic([14, 60, 14]);
+      return true;
+    }
+  }
+  // Then cost: the most specific refusal you can actually act on today.
   if (item) {
     const p = priceTag(item);
     if (!p.affordable) {
@@ -246,156 +262,155 @@ function blocked(item) {
   return true;
 }
 
-function renderLibrary(packId) {
+/* ====================================================================== */
+/* The gallery.                                                           */
+/*                                                                        */
+/* This replaced a paragraph explaining how habits are gated. The rule is  */
+/* that if the screen needs the paragraph, the screen is wrong: a player   */
+/* who opens a game's unit gallery is never told what a locked silhouette  */
+/* with "Lv 5" on it means, because the layout has already said it.        */
+/*                                                                        */
+/* Five bands, hardest at the bottom, each labelled with its rank and its  */
+/* price. Everything is visible from the first minute — the ranks you      */
+/* cannot reach yet are dimmed with the level printed on them, the ones    */
+/* you can reach but cannot afford show the price in red, and the ones you */
+/* already keep are ticked. Three states, no sentences.                    */
+/* ====================================================================== */
+
+function renderGallery(filter) {
   const state = getState();
-  const existing = new Set(state.habits.map((x) => x.title));
+  const level = levelFromXp(state.game.xp).level;
+  const w = wallet(state);
+  const owned = new Set(state.habits.filter((x) => !x.archived).map((x) => x.title));
+  const slots = slotStatus(state);
 
-  if (!packId) {
-    return h`
-      <div class="screen">
-        <header class="screen__head">
-          <a href="#/habits" class="muted" style="font-size:.85rem">‹ Habits</a>
-          <h1 style="margin-top:6px">Library</h1>
-        </header>
-        ${raw(slotCard(getState()))}
-        <div class="card" style="margin-bottom:14px;padding:10px 14px">
-          ${raw(qaRow('What every habit here comes with',
-            'A cue, a two-minute version, and the reason it matters — the three things that decide whether a habit survives past week two.'))}
-        </div>
-        <div class="stack-sm">
-          ${PACKS.map((p) => raw(h`
-            <div class="listrow" data-act="pack" data-id="${p.id}">
-              <span class="listrow__icon">${icon(p.icon)}</span>
-              <span class="grow">
-                <span style="display:block;font-weight:640">${p.title}</span>
-                <span class="muted" style="font-size:.79rem">${p.subtitle}</span>
-              </span>
-              <span class="pill">${packItems(p.id).length}</span>
-              <span class="listrow__chev">›</span>
-            </div>`))}
-        </div>
-      </div>`;
-  }
-
-  const pack = PACKS.find((p) => p.id === packId);
-  if (!pack) return h`<div class="screen"><p class="prose">Unknown pack.</p><a class="btn btn--ghost" href="#/habits/library">Back</a></div>`;
+  const packs = [{ id: 'all', title: 'Everything' }, ...PACKS.map((p) => ({ id: p.id, title: p.title }))];
+  const active = filter && PACKS.some((p) => p.id === filter) ? filter : 'all';
+  const pool = active === 'all' ? LIBRARY : LIBRARY.filter((i) => i.pack === active);
 
   return h`
     <div class="screen">
       <header class="screen__head">
-        <a href="#/habits/library" class="muted" style="font-size:.85rem">‹ Library</a>
-        <h1 style="margin-top:6px;display:flex;align-items:center;gap:10px">${icon(pack.icon, { size: 26 })} ${pack.title}</h1>
+        <a href="#/habits" class="muted" style="font-size:.85rem">‹ Habits</a>
+        <h1 style="margin-top:6px">Library</h1>
       </header>
-      <p class="muted" style="font-size:.86rem;line-height:1.55;margin-bottom:16px">${pack.blurb}</p>
-      <div class="stack-sm">
-        ${packItems(packId).map((item) => raw(libraryCard(item, existing.has(item.title))))}
+
+      <div class="gallerybar">
+        <span class="gallerybar__k">${w.balance.toLocaleString()} XP</span>
+        <span class="gallerybar__s">${slots.used} of ${slots.total} slots used</span>
       </div>
+
+      <div class="chiprow">
+        ${packs.map((p) => raw(h`
+          <button class="chip chip--sm ${active === p.id ? 'is-on' : ''}" data-act="filter" data-id="${p.id}">${p.title}</button>`))}
+      </div>
+
+      ${DIFFICULTY_ORDER.map((t) => {
+        const d = DIFFICULTY[t];
+        const items = pool.filter((i) => difficultyOf(i) === t);
+        if (!items.length) return raw('');
+        const open = level >= d.minLevel;
+        return raw(h`
+          <div class="tierband ${open ? '' : 'is-shut'}">
+            <div class="tierband__head">
+              <span class="tierband__e">${d.emoji}</span>
+              <span class="grow">
+                <span class="tierband__n">${d.label}</span>
+                <span class="tierband__b">${d.blurb}</span>
+              </span>
+              ${open
+                ? raw(h`<span class="tierband__c">${d.cost} XP</span>`)
+                : raw(h`<span class="tierband__l">${icon('lock', { size: 13 })} Level ${d.minLevel}</span>`)}
+            </div>
+            <div class="gallery">
+              ${items.map((item) => raw(galleryCard(item, {
+                open, owned: owned.has(item.title), afford: w.balance >= d.cost, cost: d.cost,
+              })))}
+            </div>
+          </div>`);
+      })}
     </div>`;
 }
 
-/** What a habit costs, and whether you can pay for it right now. */
-function pricePill(item) {
-  const p = priceTag(item);
-  return h`<span class="pricepill ${p.affordable ? '' : 'is-short'}"
-    title="${p.blurb}">${p.label} \u00b7 ${p.cost} XP</span>`;
+/**
+ * One habit in the grid.
+ *
+ * A locked card still shows its emoji and its name. Blanking them out would be
+ * the obvious move and it is the wrong one — the whole reason to render a rank
+ * you cannot reach is so you can see what is up there, and a wall of question
+ * marks gives you nothing to want.
+ */
+function galleryCard(item, { open, owned, afford, cost }) {
+  const state = open && !owned && !afford ? 'is-broke' : owned ? 'is-owned' : open ? '' : 'is-locked';
+  return h`
+    <button class="gcard ${state}" data-act="peek" data-t="${item.title}"
+            aria-label="${item.title}">
+      <span class="gcard__e">${item.emoji || '•'}</span>
+      <span class="gcard__t">${item.title}</span>
+      ${owned
+        ? raw(h`<span class="gcard__tag gcard__tag--on">${icon('check', { size: 12 })} Kept</span>`)
+        : raw(h`<span class="gcard__tag">${cost}</span>`)}
+    </button>`;
 }
 
-/** Setting or changing the stake. */
-function openStakeSheet() {
-  const st = getState().stake || {};
+/**
+ * Tapping a card. Everything a habit is, and the one button that matters.
+ *
+ * Adding from here rather than from the grid keeps the grid honest — a grid
+ * where one tap spends 160 XP is a grid people are afraid to browse.
+ */
+function openGalleryCard(title) {
+  const item = LIBRARY.find((x) => x.title === title);
+  if (!item) return;
+  const state = getState();
+  const level = levelFromXp(state.game.xp).level;
+  const d = DIFFICULTY[difficultyOf(item)];
+  const w = wallet(state);
+  const already = state.habits.some((x) => !x.archived && x.title === item.title);
+  const shut = level < d.minLevel;
+  const broke = w.balance < d.cost;
+
   sheet({
-    title: 'Your stake',
+    title: `${item.emoji || ''} ${item.title}`,
     body: h`
       <div class="stack">
-        <p class="prose" style="margin:0">
-          Charged for a day where <strong>nothing</strong> due got done. A partial day is a day
-          you showed up, and it never counts against you.
-        </p>
-        <label class="field">
-          <span>What you owe per missed day</span>
-          <select id="stk-kind">
-            ${Object.values(STAKE_KINDS).map((k) => raw(h`<option value="${k.id}" ${st.kind === k.id ? 'selected' : ''}>${k.label} \u2014 ${k.blurb}</option>`))}
-          </select>
-        </label>
-        <div class="row" style="gap:10px">
-          <label class="field grow" style="margin:0">
-            <span>Amount</span>
-            <input type="number" id="stk-amount" min="1" max="999" value="${st.amount || 2}">
-          </label>
-          <label class="field grow" style="margin:0">
-            <span>Label</span>
-            <input type="text" id="stk-unit" value="${st.unitLabel || ''}" placeholder="\u00a3, rakats, pages\u2026">
-          </label>
+        <div class="gsheet__rank">
+          <span>${d.emoji}</span>
+          <span class="grow"><strong>${d.label}</strong> · ${d.blurb}</span>
+          <span class="pricepill">${d.cost} XP</span>
         </div>
-        <p class="muted" style="margin:0;font-size:.79rem;line-height:1.5">
-          The app records the debt. It never takes anything and never tells anyone \u2014 settling it
-          is between you and Allah.
-        </p>
+
+        ${item.cue ? raw(h`<div class="gsheet__row"><span class="gsheet__k">The cue</span><p>${item.cue}</p></div>`) : raw('')}
+        ${item.tiny ? raw(h`<div class="gsheet__row"><span class="gsheet__k">On a bad day</span><p>${item.tiny}</p></div>`) : raw('')}
+        ${item.why ? raw(h`<div class="gsheet__row"><span class="gsheet__k">Why it matters</span><p>${item.why}</p></div>`) : raw('')}
+        ${item.proof ? raw(h`<p class="muted" style="margin:0;font-size:.78rem;font-weight:700">${item.proof}</p>`) : raw('')}
       </div>`,
-    footer: h`
-      ${st.enabled ? raw('<button class="btn btn--ghost" data-do="off">Turn off</button>') : raw('')}
-      <button class="btn btn--primary" data-do="save">${st.enabled ? 'Update' : 'Start'}</button>`,
+    footer: already
+      ? h`<button class="btn btn--ghost btn--block" disabled>Already in your habits</button>`
+      : shut
+        ? h`<button class="btn btn--ghost btn--block" disabled>${icon('lock', { size: 15 })} Opens at level ${d.minLevel}</button>`
+        : broke
+          ? h`<button class="btn btn--ghost btn--block" disabled>${d.cost - w.balance} XP short</button>`
+          : h`<button class="btn btn--primary btn--block" data-do="take">Take it · ${d.cost} XP</button>`,
     onMount: (el, close) => {
-      el.addEventListener('click', (ev) => {
-        const act = ev.target.closest('[data-do]')?.dataset.do;
-        if (act === 'off') { stopStake(); toast('Stake off. Anything already owed stays owed.'); close(); refresh(); }
-        if (act === 'save') {
-          startStake({
-            kind: el.querySelector('#stk-kind').value,
-            amount: Math.min(999, Math.max(1, Number(el.querySelector('#stk-amount').value) || 1)),
-            unitLabel: el.querySelector('#stk-unit').value.trim(),
-          });
-          haptic([14, 30, 20]);
-          toast('Stake set. It counts fully missed days only.', { tone: 'good' });
-          close();
-          refresh();
-        }
+      el.querySelector('[data-do="take"]')?.addEventListener('click', () => {
+        if (blocked(fromLibrary(item))) return;
+        addHabit(fromLibrary(item));
+        sfx('claim');
+        haptic([14, 30, 20]);
+        toast(`${item.emoji || ''} ${item.title} added`, { tone: 'good' });
+        close();
+        refresh();
       });
     },
   });
 }
 
-function libraryCard(item, added) {
-  const cat = CATEGORIES[item.category];
-  return h`
-    <div class="card">
-      <div class="row" style="align-items:flex-start;gap:11px">
-        <span class="lib__icon" style="color:${raw(CATEGORIES[item.category]?.color || 'var(--accent)')}">${icon(CATEGORIES[item.category]?.icon || 'check', { size: 22 })}</span>
-        <div class="grow">
-          <div style="font-weight:650">${item.title}</div>
-          <div class="muted" style="font-size:.82rem;margin-top:4px;line-height:1.45">${item.cue}</div>
-          ${item.tiny ? raw(h`<div class="pill pill--wrap" style="margin-top:8px">${icon('timer')} 2-min: ${item.tiny}</div>`) : raw('')}
-        </div>
-      </div>
-      <div class="row wrap" style="margin-top:11px;gap:7px">
-        ${raw(pricePill(item))}
-        <span class="pill" style="color:${raw(cat?.color || 'var(--accent)')}">${cat?.label || item.category}</span>
-        ${item.anchorPrayer ? raw(h`<span class="pill">after ${PRAYER_LABEL[item.anchorPrayer]}</span>`) : raw('')}
-        <span class="grow" style="min-width:0"></span>
-        ${added
-          ? raw(`<span class="pill pill--accent">${icon('check', { size: 13 })} Added</span>`)
-          : raw(h`<button class="btn btn--primary btn--sm" data-act="add" data-title="${item.title}">Add</button>`)}
-      </div>
-      ${item.proof || item.evidence ? raw(h`
-        <div class="row wrap" style="gap:6px;margin-top:9px">
-          ${item.proof ? raw(h`<span class="pill pill--gold">${item.proof}</span>`) : raw('')}
-          ${item.evidence ? raw(h`<button class="pill" data-act="why" data-key="${item.evidence}">why this works</button>`) : raw('')}
-        </div>`) : raw('')}
-    </div>`;
-}
-
 function mountLibrary(root) {
   actions(root, {
-    pack: (el, ds) => go(`habits/library/${ds.id}`),
+    filter: (el, ds) => go(ds.id === 'all' ? 'habits/library' : `habits/library/${ds.id}`),
+    peek: (el, ds) => openGalleryCard(ds.t),
     why: (el, ds) => sheet({ title: 'Why this works', body: evidenceCard(ds.key, { full: true }) }),
-    add: (el, ds) => {
-      const item = LIBRARY.find((x) => x.title === ds.title);
-      if (!item || blocked(item)) return;
-      addHabit(fromLibrary(item));
-      haptic([14, 30, 20]);
-      toast(`${item.title} added`, { icon: icon('checkCircle'), tone: 'good' });
-      refresh();
-    },
   });
 }
 

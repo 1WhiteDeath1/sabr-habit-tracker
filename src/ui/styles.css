@@ -1886,3 +1886,118 @@ a.wallet { display: block; text-decoration: none; color: inherit; }
   .radar { width: 100%; max-width: 220px; margin: 0 auto; }
   .radarkey { width: 100%; }
 }
+
+/* ====================================================================== */
+/* The gallery.                                                           */
+/*                                                                        */
+/* The layout is the explanation. Bands from cheapest to hardest, a level  */
+/* on the shut ones, a price on the rest — nobody has to be told what a    */
+/* dimmed band with "Level 5" printed on it means.                        */
+/* ====================================================================== */
+
+.gallerybar {
+  display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px;
+  padding: 10px 13px; border-radius: 13px;
+  background: var(--surface-2); border: 2px solid var(--border);
+}
+.gallerybar__k {
+  font-weight: 900; font-size: 1.05rem; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; color: var(--gold-edge);
+}
+[data-theme="dark"] .gallerybar__k { color: var(--gold); }
+.gallerybar__s {
+  margin-left: auto; font-size: .78rem; font-weight: 700; color: var(--muted);
+}
+
+.chiprow {
+  display: flex; gap: 7px; overflow-x: auto; margin-bottom: 18px;
+  padding-bottom: 4px; scrollbar-width: none;
+}
+.chiprow::-webkit-scrollbar { display: none; }
+.chip--sm { flex: none; padding: 7px 13px; font-size: .8rem; border-radius: 999px; }
+
+.tierband { margin-bottom: 22px; }
+.tierband__head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.tierband__e { font-size: 1.5rem; line-height: 1; flex: none; }
+.tierband__n {
+  display: block; font-weight: 850; font-size: .98rem; letter-spacing: -.01em;
+}
+.tierband__b {
+  display: block; font-size: .76rem; font-weight: 600; color: var(--muted);
+  margin-top: 1px;
+}
+.tierband__c {
+  flex: none; font-size: .76rem; font-weight: 850; color: var(--gold-edge);
+  font-variant-numeric: tabular-nums;
+}
+[data-theme="dark"] .tierband__c { color: var(--gold); }
+.tierband__l {
+  flex: none; display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 9px; border-radius: 999px;
+  background: var(--surface-3); color: var(--muted);
+  font-size: .72rem; font-weight: 800; white-space: nowrap;
+}
+
+.gallery {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.gcard {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 12px 8px 9px; border-radius: 14px; text-align: center;
+  background: var(--bg); border: 2px solid var(--border);
+  box-shadow: 0 2px 0 var(--border);
+  cursor: pointer; min-width: 0;
+  transition: transform .12s var(--ease);
+}
+.gcard:active { transform: translateY(2px); box-shadow: none; }
+.gcard__e { font-size: 1.75rem; line-height: 1.1; }
+.gcard__t {
+  font-size: .72rem; font-weight: 750; line-height: 1.25;
+  overflow-wrap: anywhere; color: var(--text);
+}
+.gcard__tag {
+  margin-top: 2px; padding: 2px 8px; border-radius: 999px;
+  background: var(--surface-3); color: var(--text-2);
+  font-size: .68rem; font-weight: 850; font-variant-numeric: tabular-nums;
+}
+.gcard__tag--on {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--accent-soft); color: var(--accent-edge);
+}
+[data-theme="dark"] .gcard__tag--on { background: var(--surface-3); color: var(--accent); }
+
+.gcard.is-owned { border-color: var(--accent); }
+.gcard.is-broke { opacity: .58; }
+.gcard.is-broke .gcard__tag { background: var(--red-soft); color: var(--red-edge); }
+[data-theme="dark"] .gcard.is-broke .gcard__tag { background: var(--surface-3); color: var(--red); }
+
+/* A shut rank stays legible — the point of showing it is that you can see
+   what is up there. Desaturated, not hidden. */
+.tierband.is-shut .tierband__head { opacity: .72; }
+.gcard.is-locked { opacity: .42; filter: grayscale(1); }
+.gcard.is-locked .gcard__tag { visibility: hidden; }
+
+/* ---- the detail sheet ---- */
+
+.gsheet__rank {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 12px; border-radius: 12px;
+  background: var(--surface-2); border: 2px solid var(--border);
+  font-size: .82rem; font-weight: 650;
+}
+.gsheet__rank > span:first-child { font-size: 1.2rem; }
+.gsheet__row { }
+.gsheet__k {
+  display: block; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  font-weight: 850; color: var(--muted); margin-bottom: 3px;
+}
+.gsheet__row p { margin: 0; font-size: .89rem; line-height: 1.55; font-weight: 600; }
+
+/* emoji sitting where an icon used to */
+.habitrow__icon--e { font-size: 1.35rem; line-height: 1; }
+.lvrow__e { font-size: 1.35rem; line-height: 1; flex: none; width: 20px; text-align: center; }
+/* On Today the control slot is the tick, so the habit's own mark sits with
+   its name instead. */
+.habitrow__te { margin-right: 7px; font-size: 1.05em; }

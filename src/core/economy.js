@@ -31,13 +31,41 @@ import { levelFromXp } from './game.js';
  * than three easy ones, so the game keeps pushing you toward a small set held
  * well rather than a wide set held badly.
  */
+/**
+ * The five ranks a habit can hold.
+ *
+ * Two gates, not one. `minLevel` is whether the habit has appeared in your
+ * library at all; `cost` is whether you can afford it now that it has. A game
+ * gallery works precisely because those are separate — being able to see the
+ * thing you cannot yet have is most of what makes the ladder legible, and it
+ * does the teaching that a paragraph of explanation was doing badly.
+ *
+ * The gates are front-loaded so the first two ranks are open immediately: a new
+ * player has to be able to build a real day on day one, and a library that
+ * opens mostly locked reads as a paywall rather than as a map.
+ */
 export const DIFFICULTY = {
-  1: { id: 1, label: 'Easy',     cost: 20,  blurb: 'A minute or two. Hard to have an excuse.' },
-  2: { id: 2, label: 'Light',    cost: 45,  blurb: 'Small, but you have to remember it.' },
-  3: { id: 3, label: 'Moderate', cost: 90,  blurb: 'A real slice of the day.' },
-  4: { id: 4, label: 'Hard',     cost: 160, blurb: 'Needs the day arranged around it.' },
-  5: { id: 5, label: 'Severe',   cost: 260, blurb: 'The kind most people quit. Take one at a time.' },
+  1: { id: 1, label: 'Seed',       emoji: '\u{1F331}',        cost: 20,  minLevel: 1,
+       blurb: 'A minute or two. Hard to have an excuse.' },
+  2: { id: 2, label: 'Practice',   emoji: '\u{1F33F}',        cost: 45,  minLevel: 1,
+       blurb: 'Small, but you have to remember it.' },
+  3: { id: 3, label: 'Discipline', emoji: '\u{1F525}',        cost: 90,  minLevel: 2,
+       blurb: 'A real slice of the day.' },
+  4: { id: 4, label: 'Trial',      emoji: '\u{26F0}\u{FE0F}', cost: 160, minLevel: 5,
+       blurb: 'Needs the day arranged around it.' },
+  5: { id: 5, label: 'Mastery',    emoji: '\u{1F451}',        cost: 260, minLevel: 9,
+       blurb: 'The kind most people quit. Take one at a time.' },
 };
+
+/** Is this rank open at this level yet? */
+export function tierOpenAt(tier, level) {
+  return level >= (DIFFICULTY[tier]?.minLevel ?? 1);
+}
+
+/** The rank a given level has just opened, if any — for the level-up card. */
+export function tierOpenedAt(level) {
+  return DIFFICULTY_ORDER.map((t) => DIFFICULTY[t]).find((d) => d.minLevel === level) || null;
+}
 
 export const DIFFICULTY_ORDER = [1, 2, 3, 4, 5];
 

@@ -35,6 +35,7 @@ import { UNLOCKS, UNLOCK_ORDER } from './data/unlocks.js';
 // Imported, not mirrored: main.js kept its own copy of the slot thresholds,
 // so changing them in one place silently disagreed with the other.
 import { SLOT_LEVELS, slotsAtLevel } from './core/comeback.js';
+import { tierOpenedAt, DIFFICULTY, DIFFICULTY_ORDER } from './core/economy.js';
 import { wallet } from './core/economy.js';
 
 /* --------------------------------------------------------------- icons */
@@ -353,6 +354,13 @@ function wireLevelUp() {
  */
 function rewardRows(level, opened, slotNow) {
   const rows = [];
+  // A whole rank of the library opening is the biggest thing a level can do,
+  // so it goes first.
+  const tier = tierOpenedAt(level);
+  if (tier) {
+    rows.push(`<div class="lvrow lvrow--big"><span class="lvrow__e">${tier.emoji}</span>
+      <span><strong>${escapeHTML(tier.label)} habits</strong><em>A new rank in the library · ${tier.cost} XP each</em></span></div>`);
+  }
   if (slotNow) {
     const n = slotsAtLevel(level);
     rows.push(`<div class="lvrow lvrow--big">${icon('sprout', { size: 20 })}
@@ -371,22 +379,25 @@ function rewardRows(level, opened, slotNow) {
   if (!next) return '';
   return `<div class="lvrewards lvrewards--next">
     <div class="lvrewards__k">Next</div>
-    <div class="lvrow">${icon(next.icon, { size: 20 })}
+    <div class="lvrow">${next.emoji ? `<span class="lvrow__e">${next.emoji}</span>` : icon(next.icon, { size: 20 })}
       <span><strong>${escapeHTML(next.label)}</strong><em>at level ${next.level} · ${next.level - level} to go</em></span></div>
   </div>`;
 }
 
 /** The nearest thing still ahead of `level`, slot or module, whichever is first. */
 function nextReward(level) {
+  const tier = DIFFICULTY_ORDER.map((t) => DIFFICULTY[t]).find((d) => d.minLevel > level);
   const slot = SLOT_LEVELS.find((l) => l > level);
   const mod = UNLOCK_ORDER
     .map((id) => UNLOCKS[id])
     .filter((d) => d && d.level > level)
     .sort((a, b) => a.level - b.level)[0];
-  if (slot && (!mod || slot <= mod.level)) {
-    return { level: slot, icon: 'sprout', label: `A ${ordinal(slotsAtLevel(slot))} habit slot` };
-  }
-  return mod ? { level: mod.level, icon: mod.icon, label: mod.label } : null;
+  const best = [
+    tier && { level: tier.minLevel, emoji: tier.emoji, label: `${tier.label} habits` },
+    slot && { level: slot, icon: 'sprout', label: `A ${ordinal(slotsAtLevel(slot))} habit slot` },
+    mod && { level: mod.level, icon: mod.icon, label: mod.label },
+  ].filter(Boolean).sort((a, b) => a.level - b.level)[0];
+  return best || null;
 }
 
 function ordinal(n) {

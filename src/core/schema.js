@@ -45,6 +45,9 @@ export const STATUS = { DONE: 'done', PARTIAL: 'partial', SKIP: 'skip' };
 /** A habit as stored. `cadence` decides which days it is due. */
 export function makeHabit(patch = {}) {
   return {
+    // Shown on the row and in the gallery. Library habits bring their own;
+    // a hand-written one falls back to its category icon.
+    emoji: '',
     id: patch.id || uid('h'),
     title: '',
     category: 'mind',

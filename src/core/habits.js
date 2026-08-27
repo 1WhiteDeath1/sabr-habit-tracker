@@ -238,6 +238,7 @@ export function fromLibrary(item) {
     title: item.title,
     category: item.category,
     difficulty: item.difficulty,
+    emoji: item.emoji || '',
     icon: item.icon || 'check',
     slot: item.slot || 'anytime',
     anchorPrayer: item.anchorPrayer || null,

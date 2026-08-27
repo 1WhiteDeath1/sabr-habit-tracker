@@ -98,13 +98,16 @@ export function habitRow(habit, key, { variant = 'today', state = getState() } =
   const control = variant === 'today'
     ? h`<button class="habitrow__check" data-act="toggle" data-id="${habit.id}"
           aria-label="Mark ${habit.title} done" style="--habit-color:${raw(color)}">${mark}</button>`
-    : h`<span class="habitrow__icon">${icon(CATEGORIES[habit.category]?.icon || 'check', { size: 20 })}</span>`;
+    : habit.emoji
+      ? h`<span class="habitrow__icon habitrow__icon--e">${habit.emoji}</span>`
+      : h`<span class="habitrow__icon">${icon(CATEGORIES[habit.category]?.icon || 'check', { size: 20 })}</span>`;
 
   return h`
     <div class="${raw(cls)}" style="--habit-color:${raw(color)}" data-habit="${habit.id}">
       ${raw(control)}
       <div class="habitrow__main" data-act="${variant === 'today' ? 'detail' : 'edit'}" data-id="${habit.id}">
-        <span class="habitrow__title">${habit.title}</span>
+        <span class="habitrow__title">${habit.emoji && variant === 'today'
+          ? raw(`<span class="habitrow__te">${habit.emoji}</span>`) : raw('')}${habit.title}</span>
         ${meta.length ? raw(h`<span class="habitrow__meta">${meta.map((m) => raw(
           typeof m === 'string'
             ? `<span>${esc(m)}</span>`
