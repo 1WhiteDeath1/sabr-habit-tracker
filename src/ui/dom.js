@@ -63,7 +63,14 @@ export function haptic(pattern = 12) {
 /* -------------------------------------------------------------- feedback */
 
 let toastTimer = null;
-export function toast(message, { icon = '', tone = 'default', ms = 2200 } = {}) {
+/**
+ * A toast, optionally with one action on it.
+ *
+ * The action exists for exactly one job: undoing something you have just done
+ * by accident. It is deliberately a single button with no confirm — a misclick
+ * that takes two more taps to reverse is a misclick you learn to live with.
+ */
+export function toast(message, { icon = '', tone = 'default', ms = 2200, action = null } = {}) {
   let host = $('#toast');
   if (!host) {
     host = document.createElement('div');
@@ -71,7 +78,15 @@ export function toast(message, { icon = '', tone = 'default', ms = 2200 } = {}) 
     document.body.appendChild(host);
   }
   host.className = `toast toast--${tone} is-in`;
-  host.innerHTML = h`${icon ? raw(`<span class="toast__icon">${html(icon)}</span>`) : raw('')}<span>${message}</span>`;
+  host.innerHTML = h`${icon ? raw(`<span class="toast__icon">${html(icon)}</span>`) : raw('')}<span class="grow">${message}</span>${
+    action ? raw(`<button class="toast__act">${esc(action.label)}</button>`) : raw('')}`;
+  if (action) {
+    host.querySelector('.toast__act').addEventListener('click', () => {
+      host.classList.remove('is-in');
+      clearTimeout(toastTimer);
+      action.onClick();
+    }, { once: true });
+  }
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => host.classList.remove('is-in'), ms);
 }

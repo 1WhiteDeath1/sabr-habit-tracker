@@ -5,7 +5,7 @@
 
 import { getState, mutate } from './store.js';
 import { STATUS, makeHabit, CATEGORY_ATTR, SLOTS } from './schema.js';
-import { grantXp, comboMultiplier, XP } from './game.js';
+import { grantXp, comboMultiplier, levelFromXp, XP } from './game.js';
 import { syncSpent } from './economy.js';
 import { todayKey, addDays, weekdayOf, weekOf, lastNDays, daysBetween, dayKey } from './dates.js';
 import { prayerTimesFor } from './prayer.js';
@@ -62,16 +62,60 @@ export function setStatus(habitId, key, status, { tier = 'full', note = '' } = {
     if (Object.keys(s.logs[key]).length === 0) delete s.logs[key];
   });
 
-  // XP is granted once, on the transition into a completed state. Undoing does
-  // not claw it back — punishing an undo teaches you to lie to your own tracker.
+  // XP is granted once, on the transition into a completed state. A deliberate
+  // undo later does NOT claw it back — punishing that teaches you to lie to
+  // your own tracker. A misclick is a different thing, and `undoTick` below
+  // handles it; the amount is recorded on the entry so the reversal can be
+  // exact rather than a guess at what the combo happened to be at the time.
   if (!clearing && (status === STATUS.DONE || status === STATUS.PARTIAL) && !existing) {
     const base = status === STATUS.PARTIAL
       ? XP.habitPartial
       : (tier === 'tiny' ? XP.habitTiny : XP.habitFull);
     const streak = streakOf(habit, getState(), key);
-    grantXp(base * comboMultiplier(streak), CATEGORY_ATTR[habit.category] || 'aql');
+    const paid = grantXp(base * comboMultiplier(streak), CATEGORY_ATTR[habit.category] || 'aql');
+    mutate((s) => {
+      const e = s.logs[key]?.[habitId];
+      if (e) { e.xp = paid.gained; e.attr = CATEGORY_ATTR[habit.category] || 'aql'; }
+    }, { silent: true });
   }
   return clearing ? null : status;
+}
+
+/** How long a tick stays a misclick rather than a decision. */
+export const UNDO_MS = 12000;
+
+/**
+ * Reverse a tick that should never have happened.
+ *
+ * Distinct from tapping the circle again, which clears the day but keeps the
+ * XP. This is for the case where your thumb hit the wrong row: inside a short
+ * window the XP was never earned, so it is taken back exactly — including from
+ * the attribute it was filed under, or the radar on Me keeps a ghost of it.
+ *
+ * Outside the window it degrades to an ordinary clear and the XP stays, which
+ * preserves the rule that actually matters: nothing you really did can be
+ * taken off you later.
+ */
+export function undoTick(habitId, key) {
+  const state = getState();
+  const entry = state.logs[key]?.[habitId];
+  if (!entry) return false;
+  const fresh = Date.now() - (entry.at || 0) <= UNDO_MS;
+  const paid = fresh ? Number(entry.xp) || 0 : 0;
+
+  mutate((s) => {
+    delete s.logs[key][habitId];
+    if (Object.keys(s.logs[key]).length === 0) delete s.logs[key];
+    if (paid) {
+      s.game.xp = Math.max(0, s.game.xp - paid);
+      const a = entry.attr;
+      if (a && a in s.game.attrXp) s.game.attrXp[a] = Math.max(0, s.game.attrXp[a] - paid);
+      // The level derives from xp and follows on its own, but lastLevel is
+      // stored — leaving it high would swallow the next real level-up.
+      s.game.lastLevel = levelFromXp(s.game.xp).level;
+    }
+  });
+  return { undone: true, refunded: paid };
 }
 
 /* --------------------------------------------------------------- streaks */

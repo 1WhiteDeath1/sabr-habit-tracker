@@ -42,16 +42,24 @@ import { wallet } from './core/economy.js';
 /* Inline SVG rather than emoji: emoji render differently on every device and
    never look like app chrome. These inherit currentColor. */
 
+/**
+ * The navigation glyphs.
+ *
+ * Wrapped in a sized span for the same reason core icons are: emoji advance
+ * widths differ per platform, and an unboxed one makes the whole tab bar
+ * jitter between devices.
+ */
+const G = (ch, size) => `<span class="ico ico--e" aria-hidden="true" style="width:${size}px;height:${size}px;font-size:${(size * 0.86).toFixed(1)}px">${ch}</span>`;
+
 const ICON = {
-  today: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="4.6"/><g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 1.7v2.4M12 19.9v2.4M4.4 4.4l1.7 1.7M17.9 17.9l1.7 1.7M1.7 12h2.4M19.9 12h2.4M4.4 19.6l1.7-1.7M17.9 6.1l1.7-1.7"/></g></svg>',
-  quests: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 4V2H6v2H2v2.6A5.4 5.4 0 0 0 6.7 12 6 6 0 0 0 11 15.8V18H8.4A2.4 2.4 0 0 0 6 20.4V22h12v-1.6a2.4 2.4 0 0 0-2.4-2.4H13v-2.2A6 6 0 0 0 17.3 12 5.4 5.4 0 0 0 22 6.6V4h-4ZM4 6.6V6h2v3.5A3.4 3.4 0 0 1 4 6.6Zm16 0A3.4 3.4 0 0 1 18 9.5V6h2v.6Z"/></svg>',
-  focus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg>',
-  shield: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2 4 5.1v6.2c0 5 3.4 9.7 8 10.7 4.6-1 8-5.7 8-10.7V5.1L12 2Zm3.9 7.3-4.4 5.2a1 1 0 0 1-1.5.05L8 12.5a1 1 0 1 1 1.45-1.4l1.25 1.3 3.7-4.4a1 1 0 0 1 1.5 1.3Z"/></svg>',
-  uni:    '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3 1.5 8.1 12 13.2l8.4-4.1v5.4a1 1 0 1 0 2 0V8.1L12 3ZM5 12.4v3.4c0 2 3.1 3.5 7 3.5s7-1.5 7-3.5v-3.4l-7 3.4-7-3.4Z"/></svg>',
-  me:     '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="7.4" r="4.3"/><path d="M12 13.3c-4.4 0-8 2.6-8 5.9V22h16v-2.8c0-3.3-3.6-5.9-8-5.9Z"/></svg>',
-  flame:  '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.6 1.6c.9 3.4-.9 4.9-2.4 6.7C8.5 10.3 7 11.9 7 14.4A5.6 5.6 0 0 0 12.6 20a5.6 5.6 0 0 0 5.6-5.6c0-2.8-1.7-4.5-3-6.2-.8-1.1-1.3-2.2-1.2-3.4-1.1.6-2 1.6-2.5 2.8-.2-2 .4-4.2 1.1-6Z"/><path d="M12.4 12c.5 1.8-.4 2.3-1 3-.5.6-.8 1.2-.8 2a2.4 2.4 0 0 0 4.8 0c0-1.3-.9-2.1-1.6-3-.5-.6-.8-1.2-1.4-2Z" fill="#fff" opacity=".55"/></svg>',
-  bolt:   '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.6 1.5 4 13.3h6.1L9.2 22.5 19.8 10h-6.6l.4-8.5Z"/></svg>',
-  star:   '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 1.8 3 6.4 6.9.9-5.1 4.8 1.3 6.9L12 17.5l-6.1 3.3 1.3-6.9L2.1 9.1 9 8.2l3-6.4Z"/></svg>',
+  today:  G('\u{2600}\u{FE0F}', 26),
+  quests: G('\u{1F3C6}', 26),
+  me:     G('\u{1F464}', 28),
+  uni:    G('\u{1F393}', 26),
+  shield: G('\u{1F6E1}\u{FE0F}', 26),
+  flame:  G('\u{1F525}', 17),
+  bolt:   G('\u{26A1}', 17),
+  star:   G('\u{2B50}', 17),
 };
 
 /* Five slots, and the middle one is you.

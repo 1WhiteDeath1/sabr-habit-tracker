@@ -311,7 +311,7 @@ function renderGallery(filter) {
         if (!items.length) return raw('');
         const open = level >= d.minLevel;
         return raw(h`
-          <div class="tierband ${open ? '' : 'is-shut'}">
+          <div class="tierband tier--${d.metal} ${open ? '' : 'is-shut'}">
             <div class="tierband__head">
               <span class="tierband__e">${d.emoji}</span>
               <span class="grow">
@@ -324,7 +324,8 @@ function renderGallery(filter) {
             </div>
             <div class="gallery">
               ${items.map((item) => raw(galleryCard(item, {
-                open, owned: owned.has(item.title), afford: w.balance >= d.cost, cost: d.cost,
+                open, owned: owned.has(item.title), afford: w.balance >= d.cost,
+                cost: d.cost, metal: d.metal,
               })))}
             </div>
           </div>`);
@@ -340,10 +341,10 @@ function renderGallery(filter) {
  * you cannot reach is so you can see what is up there, and a wall of question
  * marks gives you nothing to want.
  */
-function galleryCard(item, { open, owned, afford, cost }) {
+function galleryCard(item, { open, owned, afford, cost, metal }) {
   const state = open && !owned && !afford ? 'is-broke' : owned ? 'is-owned' : open ? '' : 'is-locked';
   return h`
-    <button class="gcard ${state}" data-act="peek" data-t="${item.title}"
+    <button class="gcard metal--${metal} ${state}" data-act="peek" data-t="${item.title}"
             aria-label="${item.title}">
       <span class="gcard__e">${item.emoji || '•'}</span>
       <span class="gcard__t">${item.title}</span>
@@ -374,7 +375,7 @@ function openGalleryCard(title) {
     title: `${item.emoji || ''} ${item.title}`,
     body: h`
       <div class="stack">
-        <div class="gsheet__rank">
+        <div class="gsheet__rank metal--${d.metal}">
           <span>${d.emoji}</span>
           <span class="grow"><strong>${d.label}</strong> · ${d.blurb}</span>
           <span class="pricepill">${d.cost} XP</span>

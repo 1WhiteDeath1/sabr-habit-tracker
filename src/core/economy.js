@@ -34,6 +34,12 @@ import { levelFromXp } from './game.js';
 /**
  * The five ranks a habit can hold.
  *
+ * Named for metals because a metal ladder is understood before it is read —
+ * nobody has to be told that diamond outranks bronze, which is the whole point
+ * of using one. `metal` drives the colour theming in the gallery; `label` is
+ * only ever shown next to the blurb, which is what actually says how hard the
+ * habit is.
+ *
  * Two gates, not one. `minLevel` is whether the habit has appeared in your
  * library at all; `cost` is whether you can afford it now that it has. A game
  * gallery works precisely because those are separate — being able to see the
@@ -45,15 +51,15 @@ import { levelFromXp } from './game.js';
  * opens mostly locked reads as a paywall rather than as a map.
  */
 export const DIFFICULTY = {
-  1: { id: 1, label: 'Seed',       emoji: '\u{1F331}',        cost: 20,  minLevel: 1,
+  1: { id: 1, label: 'Bronze',   metal: 'bronze',   emoji: '\u{1F949}', cost: 20,  minLevel: 1,
        blurb: 'A minute or two. Hard to have an excuse.' },
-  2: { id: 2, label: 'Practice',   emoji: '\u{1F33F}',        cost: 45,  minLevel: 1,
+  2: { id: 2, label: 'Silver',   metal: 'silver',   emoji: '\u{1F948}', cost: 45,  minLevel: 1,
        blurb: 'Small, but you have to remember it.' },
-  3: { id: 3, label: 'Discipline', emoji: '\u{1F525}',        cost: 90,  minLevel: 2,
+  3: { id: 3, label: 'Gold',     metal: 'gold',     emoji: '\u{1F947}', cost: 90,  minLevel: 2,
        blurb: 'A real slice of the day.' },
-  4: { id: 4, label: 'Trial',      emoji: '\u{26F0}\u{FE0F}', cost: 160, minLevel: 5,
+  4: { id: 4, label: 'Platinum', metal: 'platinum', emoji: '\u{1F4A0}', cost: 160, minLevel: 5,
        blurb: 'Needs the day arranged around it.' },
-  5: { id: 5, label: 'Mastery',    emoji: '\u{1F451}',        cost: 260, minLevel: 9,
+  5: { id: 5, label: 'Diamond',  metal: 'diamond',  emoji: '\u{1F48E}', cost: 260, minLevel: 9,
        blurb: 'The kind most people quit. Take one at a time.' },
 };
 

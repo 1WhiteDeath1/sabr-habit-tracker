@@ -4,7 +4,7 @@
 import { h, raw, actions, haptic, toast, xpBurst, sheet, empty, bar, qaRow } from '../ui/dom.js';
 import { getState } from '../core/store.js';
 import { STATUS, PRAYER_LABEL, CATEGORIES } from '../core/schema.js';
-import { dayPlan, dayProgress, setStatus, statusOf, atRisk, streakOf, ageInDays, completionRate } from '../core/habits.js';
+import { dayPlan, dayProgress, setStatus, statusOf, atRisk, streakOf, ageInDays, completionRate, undoTick } from '../core/habits.js';
 import { todayKey, prettyDayLong, minutesNow, prettyTime, parseHM, daysBetween } from '../core/dates.js';
 import { prayerWindow } from '../core/prayer.js';
 import { passageFor } from '../data/scripture.js';
@@ -486,7 +486,25 @@ function toggleHabit(id, el) {
     haptic([14, 30, 20]);
     const gained = getState().game.xp - xpBefore;
     xpBurst(gained, el, attrColorFor(habit.category));
-    if (streak > 1 && streak % 7 === 0) toast(`${streak}-day streak on ${habit.title}`, { icon: icon('flame'), tone: 'good' });
+    // Every tick offers a way straight back out. Rows sit close together and a
+    // thumb is wider than one of them, so the question is not whether the wrong
+    // habit gets ticked but how much work it is to put right.
+    const undo = {
+      label: 'Undo',
+      onClick: () => {
+        const res = undoTick(id, key);
+        if (!res) return;
+        sfx('undo');
+        haptic(10);
+        toast(res.refunded ? `${habit.title} — undone, −${res.refunded} XP` : `${habit.title} — undone`);
+        refresh();
+      },
+    };
+    if (streak > 1 && streak % 7 === 0) {
+      toast(`${streak}-day streak on ${habit.title}`, { icon: icon('flame'), tone: 'good', ms: 5000, action: undo });
+    } else {
+      toast(`${habit.title}`, { icon: icon('check'), tone: 'good', ms: 5000, action: undo });
+    }
   } else if (before) {
     sfx('undo');
     haptic(8);
