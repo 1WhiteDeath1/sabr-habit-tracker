@@ -7,7 +7,7 @@
  * exception, and the app must open on a phone in flight mode at 5am.
  */
 
-const VERSION = 'sabr-v36';
+const VERSION = 'sabr-v37';
 const SHELL = [
   './',
   './index.html',
@@ -36,6 +36,8 @@ const SHELL = [
   './src/core/economy.js',
   './src/core/stake.js',
   './src/core/streak.js',
+  './src/core/trials.js',
+  './src/data/trials.js',
   './src/core/unlocks.js',
   './src/data/unlocks.js',
   './src/features/vault.js',

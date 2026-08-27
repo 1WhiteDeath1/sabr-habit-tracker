@@ -150,12 +150,47 @@ export function claimMain(id) {
   if (isComplete(id, state) || !isUnlocked(quest, state)) return 0;
   if (!progressOf(quest, state).met) return 0;
 
+  // Claiming a tier of the chain you named pays a premium. Without it the
+  // pursuit is a label rather than a decision, and a decision with no
+  // consequence is not one.
+  const bonus = isPursued(quest.chain, state) ? Math.round(quest.xp * PURSUIT_BONUS) : 0;
   mutate((s) => {
     s.game.quests[id] = { ...(s.game.quests[id] || {}), completedAt: Date.now() };
   });
-  grantXp(quest.xp, quest.attr);
-  document.dispatchEvent(new CustomEvent('sabr:quest-complete', { detail: { quest } }));
-  return quest.xp;
+  grantXp(quest.xp + bonus, quest.attr);
+  document.dispatchEvent(new CustomEvent('sabr:quest-complete', { detail: { quest, bonus } }));
+  return quest.xp + bonus;
+}
+
+/* --------------------------------------------------------------- pursuit */
+
+/**
+ * The one chain you are actively pushing on.
+ *
+ * Goal shielding: Shah, Friedman and Kruglanski showed that committing to a
+ * single goal actively inhibits competing ones, and that the effect is stronger
+ * the more committed you are. Fourteen chains presented as equals is the
+ * failure mode that finding describes — so the board now asks you to name one,
+ * and pays a premium on it to make naming it a real decision rather than a
+ * label.
+ */
+export const PURSUIT_BONUS = 0.5;
+
+export function pursuit(state = getState()) {
+  const p = state.game.pursuit;
+  if (!p || !p.chain) return null;
+  const next = mainBoard(state).find((row) => row.quest.chain === p.chain);
+  if (!next) return null;
+  return { ...p, ...next };
+}
+
+export function setPursuit(chain) {
+  mutate((s) => { s.game.pursuit = chain ? { chain, since: Date.now() } : null; });
+  return chain;
+}
+
+export function isPursued(chain, state = getState()) {
+  return state.game.pursuit?.chain === chain;
 }
 
 /* ------------------------------------------------------------ side quests */

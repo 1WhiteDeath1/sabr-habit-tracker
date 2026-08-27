@@ -224,6 +224,14 @@ export function makeGame(patch = {}) {
     lastStreak: 0,         // last run seen, to notice a break exactly once
     lastBreak: null,       // {at, was, on, seen} — the record of a fall
     milestonesClaimed: [], // milestone day-counts already celebrated
+
+    /* ---- the medium horizon (core/trials.js, core/quests.js) ------------
+     * The one chain you have chosen to push on, and the one trial you have
+     * accepted. Both are deliberately singular: fourteen parallel goals
+     * motivate about as well as none. */
+    pursuit: null,         // {chain, since}
+    trial: null,           // {id, from, to, acceptedAt, settled}
+    trialHistory: [],      // [{id, outcome, value, target, xp, endedAt}]
     rukhsah: { covered: [] }, // day keys a concession has been spent on
     ...patch,
   };

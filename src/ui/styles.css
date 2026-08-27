@@ -2142,3 +2142,86 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
 
 .gsheet__rank { border-color: var(--m, var(--border)); background: var(--m-soft, var(--surface-2)); }
 .gsheet__rank strong { color: var(--m, var(--text)); }
+
+/* ====================================================================== */
+/* The board: one pursuit, one trial.                                     */
+/* ====================================================================== */
+
+.pursuit__k, .trial__k, .trialpick__k {
+  font-size: .68rem; letter-spacing: .13em; text-transform: uppercase;
+  font-weight: 800; color: var(--muted);
+}
+.pursuit__t { font-size: 1.25rem; font-weight: 750; letter-spacing: -.02em; margin-top: 5px; }
+.pursuit__s { font-size: .84rem; font-weight: 600; color: var(--text-2); margin-top: 3px; line-height: 1.5; }
+.pursuit__b, .trialpick__b {
+  margin: 7px 0 0; font-size: .85rem; line-height: 1.6; font-weight: 550; color: var(--text-2);
+}
+.pursuit__swap {
+  appearance: none; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: .74rem; font-weight: 750; color: var(--accent);
+  text-transform: uppercase; letter-spacing: .08em; padding: 4px 0;
+}
+
+.pursuit__meter, .trial__meter { display: flex; align-items: center; gap: 10px; margin-top: 13px; }
+.pursuit__bar, .trial__bar {
+  flex: 1; height: 9px; border-radius: 999px; background: var(--surface-3); overflow: hidden;
+}
+.pursuit__bar i, .trial__bar i {
+  display: block; height: 100%; border-radius: 999px;
+  background: var(--accent); transition: width .3s var(--ease);
+}
+.trial__bar i { background: var(--gold); }
+.pursuit__n, .trial__n {
+  flex: none; font-size: .8rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+.pursuit__foot {
+  display: flex; align-items: center; gap: 8px; margin-top: 12px;
+  padding-top: 11px; border-top: 1px solid var(--border);
+  font-size: .76rem; font-weight: 650; color: var(--muted);
+}
+.pursuit__foot svg, .pursuit__foot .ico { color: var(--gold); }
+.pursuit--empty { border-style: dashed; }
+
+/* ---- the trial ---- */
+
+.trial { border-color: var(--gold); }
+.trial.is-won { border-color: var(--accent); background: var(--accent-soft); }
+.trial.is-over { border-color: var(--border); }
+[data-theme="dark"] .trial.is-won { background: var(--surface-2); }
+.trial__left {
+  font-size: .74rem; font-weight: 800; color: var(--gold-edge);
+  font-variant-numeric: tabular-nums;
+}
+[data-theme="dark"] .trial__left { color: var(--gold); }
+.trial__t { font-size: 1.15rem; font-weight: 750; letter-spacing: -.02em; margin-top: 5px; }
+.trial__d { font-size: .85rem; font-weight: 600; color: var(--text-2); margin-top: 3px; line-height: 1.5; }
+.trial__note {
+  margin: 11px 0 0; font-size: .78rem; line-height: 1.55; font-weight: 600; color: var(--muted);
+}
+
+.trialopt {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  padding: 12px 14px; border-radius: var(--r-sm); cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border);
+  font: inherit; color: inherit;
+}
+.trialopt.is-on { border-color: var(--accent); background: var(--accent-soft); }
+[data-theme="dark"] .trialopt.is-on { background: var(--surface-3); }
+.trialopt__t { display: block; font-weight: 750; font-size: .92rem; }
+.trialopt__d {
+  display: block; font-size: .78rem; font-weight: 550; color: var(--text-2);
+  margin-top: 2px; line-height: 1.45;
+}
+.trialopt .pricepill { flex: none; }
+
+/* ---- the fourteen, folded away ---- */
+
+.allchains { padding: 0; }
+.allchains > summary {
+  display: flex; align-items: center; gap: 10px; padding: 13px 15px;
+  cursor: pointer; list-style: none;
+  font-size: .88rem; font-weight: 700; color: var(--text-2);
+}
+.allchains > summary::-webkit-details-marker { display: none; }
+.allchains .path { padding: 0 12px 16px; }

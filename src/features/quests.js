@@ -5,9 +5,13 @@
 // making you read a list. Side quests stay as cards below, deliberately looser,
 // because they are optional and should not look like obligations.
 
-import { h, raw, actions, haptic, toast, xpBurst, sheet, bar, qaRow } from '../ui/dom.js';
+import { h, raw, actions, haptic, toast, xpBurst, sheet, confirmSheet, bar, qaRow } from '../ui/dom.js';
 import { getState } from '../core/store.js';
-import { mainBoard, claimMain, todaysOffers, sideStatus, acceptSide, completeSide } from '../core/quests.js';
+import { activeTrial, offered, acceptTrial, abandonTrial, settleTrial,
+         trialProgress, daysLeft, isExpired, TRIAL_BY_ID } from '../core/trials.js';
+import { confetti } from '../ui/confetti.js';
+import { mainBoard, claimMain, todaysOffers, sideStatus, acceptSide, completeSide,
+         pursuit, setPursuit, isPursued, PURSUIT_BONUS } from '../core/quests.js';
 import { ATTRS } from '../core/schema.js';
 import { heroCard, attrStrip, sideQuestCard } from '../ui/widgets.js';
 import { isOwned } from '../core/unlocks.js';
@@ -29,19 +33,21 @@ export const questsScreen = {
     const sideOn = isOwned('sidequests', state);
     const offers = sideOn ? todaysOffers(state) : [];
 
-    // The first node you can actually act on gets the bubble above it.
-    const nextIndex = board.findIndex((row) => !row.done && !row.locked);
+    // Anything sitting at 100% is the only part of the board with a verb, so it
+    // stays above the fold; the rest collapse. Fourteen chains you cannot act on
+    // is not a board, it is a wall.
+    const claimable = board.filter((row) => !row.done && !row.locked && row.progress.met);
 
     return h`
       <div class="screen">
         <header class="screen__head">
-          <div class="eyebrow">Quest board</div>
-          <h1>Your campaign</h1>
+          <div class="eyebrow">The next two weeks</div>
+          <h1>What you are pushing on</h1>
         </header>
 
         <div class="stack">
-          ${raw(heroCard(state))}
-          <div class="card">${raw(attrStrip(state))}</div>
+          ${raw(pursuitCard(state))}
+          ${raw(trialCard(state))}
         </div>
 
         <div class="section-title"><span>Today’s side quests</span>
@@ -55,11 +61,22 @@ export const questsScreen = {
             ${offers.map((q) => raw(sideQuestCard(q, state)))}
           </div>`) : raw(gateCard('sidequests'))}
 
-        <div class="section-title"><span>Main quests</span>
-          <span class="muted" style="text-transform:none;letter-spacing:0">running always · claim when lit</span></div>
-        <div class="path">
-          ${raw(board.map((row, i) => pathNode(row, i, i === nextIndex)).join(''))}
-        </div>
+        <div class="section-title"><span>Every chain</span>
+          <span class="muted" style="text-transform:none;letter-spacing:0">counting whether you look or not</span></div>
+        ${claimable.length ? raw(h`
+          <div class="path" style="margin-bottom:6px">
+            ${raw(claimable.map((row) => pathNode(row, board.indexOf(row), true)).join(''))}
+          </div>`) : raw('')}
+        <details class="card allchains">
+          <summary>
+            <span class="grow">${board.filter((r) => !r.done).length} chains running</span>
+            <i class="qa__mark" aria-hidden="true">?</i>
+          </summary>
+          <div class="path" style="margin-top:14px">
+            ${raw(board.filter((row) => !claimable.includes(row))
+              .map((row, i) => pathNode(row, i, false)).join(''))}
+          </div>
+        </details>
 
       </div>`;
   },
@@ -77,6 +94,40 @@ export const questsScreen = {
         refresh();
       },
       qdetail: (el, ds) => openQuestDetail(ds.id),
+      pickpursuit: () => openPursuitSheet(),
+      taketrial: (el, ds) => {
+        acceptTrial(ds.id);
+        sfx('claim'); haptic([16, 40, 22]);
+        toast('Trial accepted · seven days', { icon: icon('flame'), tone: 'good' });
+        refresh();
+      },
+      settletrial: (el) => {
+        const res = settleTrial();
+        if (!res) return;
+        if (res.outcome === 'won') {
+          sfx('levelup'); haptic([20, 50, 25, 50, 40]);
+          confetti({ count: 110, origin: el.getBoundingClientRect() });
+          xpBurst(res.xp, el, 'var(--gold)');
+          toast(`${res.spec.title} · +${res.xp} XP`, { icon: icon('trophy'), tone: 'good', ms: 3400 });
+        } else if (res.outcome === 'partial') {
+          sfx('claim'); haptic([14, 30, 20]);
+          xpBurst(res.xp, el, 'var(--blue)');
+          toast(`${res.value} of ${res.target} · +${res.xp} XP for the part you held`, { ms: 3600 });
+        } else {
+          haptic(10);
+          toast(`${res.value} of ${res.target}. Nothing lost — the days still count on your record.`, { ms: 3800 });
+        }
+        refresh();
+      },
+      droptrial: async () => {
+        const ok = await confirmSheet({
+          title: 'Step away from this trial?',
+          message: 'It costs nothing and it is not recorded as a loss. You can take another whenever you want one.',
+          confirmLabel: 'Step away',
+        });
+        if (!ok) return;
+        abandonTrial(); haptic(10); refresh();
+      },
       accept: (el, ds) => { acceptSide(ds.id); haptic(10); refresh(); },
       complete: (el, ds) => {
         const xp = completeSide(ds.id);
@@ -125,6 +176,163 @@ function pathNode(row, index, isNext) {
         </div>
       </div>
     </div>`;
+}
+
+/* ====================================================================== */
+/* The board.                                                             */
+/*                                                                        */
+/* This screen used to open with a copy of the top of Me — the same level  */
+/* card, the same five attributes — and then list fourteen chains you      */
+/* could not act on. It read as a worse Me, because that is what it was.   */
+/*                                                                        */
+/* It answers one question now, and it is the question nothing else in the */
+/* app was asking: what am I pushing on over the next couple of weeks?     */
+/* Today covers now, Habits covers forever, Me covers the past. This is    */
+/* the middle distance, and both halves of it have a verb — you choose a   */
+/* pursuit, and you accept a trial.                                        */
+/* ====================================================================== */
+
+function trialCard(state) {
+  const rec = activeTrial(state);
+
+  if (!rec) {
+    const pool = offered(state).slice(0, 3);
+    if (!pool.length) return '';
+    return h`
+      <div class="card trialpick">
+        <div class="trialpick__k">Take a trial</div>
+        <p class="trialpick__b">
+          Seven days, one at a time, and you can decline. It is the only thing here
+          you are able to fail — which is the only reason finishing one means anything.
+        </p>
+        <div class="stack-sm" style="margin-top:12px">
+          ${pool.map((t) => raw(h`
+            <button class="trialopt" data-act="taketrial" data-id="${t.id}">
+              <span class="grow">
+                <span class="trialopt__t">${t.title}</span>
+                <span class="trialopt__d">${t.desc}</span>
+              </span>
+              <span class="pricepill">+${t.xp}</span>
+            </button>`))}
+        </div>
+      </div>`;
+  }
+
+  const spec = TRIAL_BY_ID[rec.id];
+  const p = trialProgress(rec, state);
+  const left = daysLeft(rec);
+  const over = isExpired(rec);
+  const won = p.met;
+
+  return h`
+    <div class="card trial ${won ? 'is-won' : over ? 'is-over' : ''}">
+      <div class="row-between">
+        <span class="trial__k">${won ? 'Trial complete' : over ? 'The week is up' : 'Trial running'}</span>
+        <span class="trial__left">${won || over ? '' : `${left} day${left === 1 ? '' : 's'} left`}</span>
+      </div>
+      <div class="trial__t">${spec.title}</div>
+      <div class="trial__d">${spec.desc}</div>
+
+      <div class="trial__meter">
+        <div class="trial__bar"><i style="width:${(p.pct * 100).toFixed(1)}%"></i></div>
+        <span class="trial__n">${p.raw} / ${p.target}</span>
+      </div>
+
+      ${won || over
+        ? raw(h`<button class="btn ${won ? 'btn--primary' : 'btn--ghost'} btn--block" data-act="settletrial"
+              style="margin-top:11px">${won ? `Claim +${spec.xp} XP` : 'Close it out'}</button>`)
+        : raw(h`<p class="trial__note">${spec.note}</p>
+            <button class="btn btn--ghost btn--sm btn--block" data-act="droptrial"
+                    style="margin-top:9px">Step away from it</button>`)}
+    </div>`;
+}
+
+/**
+ * The chosen chain.
+ *
+ * Shows the concrete next number rather than the chain's name, because "The
+ * Foundation, tier 2" tells you nothing about what to do this afternoon and
+ * "4 of 21 days" tells you everything.
+ */
+function pursuitCard(state) {
+  const p = pursuit(state);
+  if (!p) {
+    return h`
+      <div class="card pursuit pursuit--empty">
+        <div class="pursuit__k">Nothing chosen</div>
+        <p class="pursuit__b">
+          Fourteen chains are running whether you look at them or not. Name the one
+          that matters at the moment and it pays half as much again — the rest keep
+          counting quietly underneath.
+        </p>
+        <button class="btn btn--primary btn--block" data-act="pickpursuit" style="margin-top:11px">
+          Choose what you are pushing on
+        </button>
+      </div>`;
+  }
+
+  const { quest, progress } = p;
+  return h`
+    <div class="card pursuit">
+      <div class="row-between">
+        <span class="pursuit__k">Pushing on</span>
+        <button class="pursuit__swap" data-act="pickpursuit">Change</button>
+      </div>
+      <div class="pursuit__t">${quest.chainTitle}</div>
+      <div class="pursuit__s">${quest.title} — ${quest.note}</div>
+      <div class="pursuit__meter">
+        <div class="pursuit__bar"><i style="width:${(progress.pct * 100).toFixed(1)}%"></i></div>
+        <span class="pursuit__n">${progress.value} / ${progress.target}</span>
+      </div>
+      <div class="pursuit__foot">
+        ${icon('bolt', { size: 14 })}
+        <span class="grow">Tiers on this chain pay +50% while it is chosen</span>
+        <span class="pricepill">+${quest.xp + Math.round(quest.xp * PURSUIT_BONUS)}</span>
+      </div>
+    </div>`;
+}
+
+/** Choosing the chain, from the ones actually available to you. */
+function openPursuitSheet() {
+  const state = getState();
+  const rows = mainBoard(state).filter((r) => !r.locked && !r.done);
+  sheet({
+    title: 'What are you pushing on?',
+    body: h`
+      <div class="stack-sm">
+        <p class="prose" style="margin:0 0 4px">
+          One at a time. You can change it whenever you like — the others keep counting
+          underneath, they just do not pay the premium.
+        </p>
+        ${rows.map((r) => raw(h`
+          <button class="trialopt ${isPursued(r.quest.chain, state) ? 'is-on' : ''}"
+                  data-do="pick" data-chain="${r.quest.chain}">
+            <span class="grow">
+              <span class="trialopt__t">${r.quest.chainTitle}</span>
+              <span class="trialopt__d">${r.quest.note}</span>
+            </span>
+            <span class="pricepill">${r.progress.value}/${r.progress.target}</span>
+          </button>`))}
+        ${state.game.pursuit ? raw(h`
+          <button class="btn btn--ghost btn--block" data-do="clear" style="margin-top:6px">
+            Stop pushing on anything
+          </button>`) : raw('')}
+      </div>`,
+    onMount: (el, close) => {
+      el.addEventListener('click', (ev) => {
+        const pick = ev.target.closest('[data-do="pick"]');
+        if (pick) {
+          setPursuit(pick.dataset.chain);
+          sfx('claim'); haptic([14, 30, 20]);
+          close(); refresh();
+          return;
+        }
+        if (ev.target.closest('[data-do="clear"]')) {
+          setPursuit(null); haptic(10); close(); refresh();
+        }
+      });
+    },
+  });
 }
 
 /** Thin progress ring hugging a path node. */
