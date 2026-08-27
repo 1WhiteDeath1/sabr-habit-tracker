@@ -17,6 +17,7 @@ import { getState, mutate } from './store.js';
 import { levelFromXp } from './game.js';
 import { wallet, investedUnlocks } from './economy.js';
 import { UNLOCKS, UNLOCK_ORDER } from '../data/unlocks.js';
+import { SLOT_LEVELS, slotsAtLevel } from './comeback.js';
 
 export { UNLOCKS, UNLOCK_ORDER };
 // Defined in economy.js so this module can depend on that one and not the
@@ -196,4 +197,25 @@ export function adoptExisting() {
     }
     s.game.adopted = true;
   }, { silent: true });
+}
+
+/**
+ * The nearest reward still ahead of `level` — a habit slot or a module,
+ * whichever comes first.
+ *
+ * Exists because a level number by itself answers nothing. Every place that
+ * shows the level bar shows this next to it, so "what is this bar for" is never
+ * a question the player has to leave the screen to answer.
+ */
+export function nextRewardAfter(level) {
+  const slot = SLOT_LEVELS.find((l) => l > level);
+  const mod = UNLOCK_ORDER
+    .map((id) => UNLOCKS[id])
+    .filter((d) => d && d.level > level)
+    .sort((a, b) => a.level - b.level)[0];
+
+  if (slot && (!mod || slot <= mod.level)) {
+    return { level: slot, icon: 'sprout', label: `Habit slot ${slotsAtLevel(slot)}` };
+  }
+  return mod ? { level: mod.level, icon: mod.icon, label: mod.label } : null;
 }

@@ -1,9 +1,9 @@
 // main.js — boot sequence and the app shell.
 
 import { load, getState, subscribe, mutate, flush } from './core/store.js';
-import { register, setOutlet, setNotFound, start, onRouteChange, parse, go } from './core/router.js';
+import { register, setOutlet, setNotFound, start, onRouteChange, parse, go, refresh } from './core/router.js';
 import { setHaptics, haptic, toast, sheet, raw } from './ui/dom.js';
-import { levelFromXp } from './core/game.js';
+import { levelFromXp, rankFor } from './core/game.js';
 import { claimableCount } from './core/quests.js';
 import { creditCleanDay } from './core/recovery.js';
 import { initNotifications } from './core/notify.js';
@@ -31,6 +31,10 @@ import { icon } from './ui/icons.js';
 import { uniScreen } from './features/uni.js';
 import { vaultScreen } from './features/vault.js';
 import { adoptExisting, opensAtLevel, refundRetired } from './core/unlocks.js';
+import { UNLOCKS, UNLOCK_ORDER } from './data/unlocks.js';
+// Imported, not mirrored: main.js kept its own copy of the slot thresholds,
+// so changing them in one place silently disagreed with the other.
+import { SLOT_LEVELS, slotsAtLevel } from './core/comeback.js';
 import { wallet } from './core/economy.js';
 
 /* --------------------------------------------------------------- icons */
@@ -293,47 +297,102 @@ function escapeHTML(v) {
 function wireLevelUp() {
   document.addEventListener('sabr:levelup', (ev) => {
     const level = ev.detail.newLevel;
-    // A level is only interesting because of what it opens. Say so on the card
-    // rather than leaving the reward to be discovered on some other screen.
     const opened = opensAtLevel(level);
-    const slotNow = SLOT_LEVELS_SET.has(level);
+    const slotNow = SLOT_LEVELS.includes(level);
+
+    // The screen underneath is now stale — it was rendered against the old
+    // level and is still showing the old slot count, the old shelf and the old
+    // wallet. Refreshing here rather than on dismiss means the reward is
+    // already in place behind the card, so closing it reveals the new state
+    // instead of showing the old one for another beat.
+    refresh();
 
     sfx('levelup');
     confetti();
 
+    const rows = rewardRows(level, opened, slotNow);
     const overlay = document.createElement('div');
     overlay.className = 'levelup';
     overlay.innerHTML = `
       <div class="levelup__card">
-        <div class="levelup__badge"><span class="levelup__n">${level}</span></div>
-        <div class="muted" style="letter-spacing:.14em;text-transform:uppercase;font-size:.78rem;font-weight:800">Level up</div>
-        <h1 style="margin-top:8px;font-size:1.9rem">Level ${level}</h1>
-        ${levelRewards(opened, slotNow)}
-        <button class="btn btn--primary btn--lg btn--block" style="margin-top:28px;max-width:320px">Continue</button>
+        <div class="levelup__rays" aria-hidden="true"></div>
+        <div class="levelup__badge">
+          <span class="levelup__n">${level}</span>
+        </div>
+        <div class="levelup__eyebrow">Level up</div>
+        <h1 class="levelup__h">${escapeHTML(rankFor(level).name)}</h1>
+        <p class="levelup__rank">${escapeHTML(rankFor(level).meaning)}</p>
+        ${rows}
+        <button class="btn btn--primary btn--lg btn--block levelup__go">Continue</button>
       </div>`;
     document.body.appendChild(overlay);
+
+    // Staggered reveal. Each row is handed its own delay as a custom property
+    // rather than an inline animation, so the CSS owns the timing and a reader
+    // with prefers-reduced-motion gets the whole thing at once.
+    overlay.querySelectorAll('.lvrow').forEach((el, i) => {
+      el.style.setProperty('--i', String(i));
+    });
+
     haptic([30, 60, 30, 60, 30, 60, 120]);
     const dismiss = () => overlay.remove();
     overlay.addEventListener('click', dismiss);
-    setTimeout(dismiss, 5200);
+    // Long enough for the last row to have landed and been read.
+    setTimeout(dismiss, 6400);
   });
 }
 
-/** Slot thresholds, mirrored from core/comeback.js for the level-up card. */
-const SLOT_LEVELS_SET = new Set([5, 10, 16, 24, 34, 46]);
-
-/** What this level actually opened, or a nudge toward the next thing if nothing. */
-function levelRewards(opened, slotNow) {
+/**
+ * What this level opened, and — when it opened nothing — what the next one
+ * does.
+ *
+ * The empty case used to render nothing at all, so roughly two levels in three
+ * produced a card that said "Level 7" and no more, which teaches a player that
+ * levelling is decorative. Naming the next reward turns a flat level into a
+ * step toward one.
+ */
+function rewardRows(level, opened, slotNow) {
   const rows = [];
   if (slotNow) {
-    rows.push(`<div class="lvrow">${icon('check', { size: 17 })}<span>A new habit slot</span></div>`);
+    const n = slotsAtLevel(level);
+    rows.push(`<div class="lvrow lvrow--big">${icon('sprout', { size: 20 })}
+      <span><strong>A ${ordinal(n)} habit slot</strong><em>You can hold ${n} habits now</em></span></div>`);
   }
   for (const d of opened) {
-    rows.push(`<div class="lvrow">${icon(d.icon, { size: 17 })}
-      <span>${escapeHTML(d.label)} is on the shelf · ${d.cost} XP</span></div>`);
+    rows.push(`<div class="lvrow">${icon(d.icon, { size: 20 })}
+      <span><strong>${escapeHTML(d.label)}</strong><em>On the shelf for ${d.cost} XP</em></span></div>`);
   }
-  if (!rows.length) return '';
-  return `<div class="lvrewards"><div class="lvrewards__k">Unlocked</div>${rows.join('')}</div>`;
+
+  if (rows.length) {
+    return `<div class="lvrewards"><div class="lvrewards__k">Unlocked</div>${rows.join('')}</div>`;
+  }
+
+  const next = nextReward(level);
+  if (!next) return '';
+  return `<div class="lvrewards lvrewards--next">
+    <div class="lvrewards__k">Next</div>
+    <div class="lvrow">${icon(next.icon, { size: 20 })}
+      <span><strong>${escapeHTML(next.label)}</strong><em>at level ${next.level} · ${next.level - level} to go</em></span></div>
+  </div>`;
+}
+
+/** The nearest thing still ahead of `level`, slot or module, whichever is first. */
+function nextReward(level) {
+  const slot = SLOT_LEVELS.find((l) => l > level);
+  const mod = UNLOCK_ORDER
+    .map((id) => UNLOCKS[id])
+    .filter((d) => d && d.level > level)
+    .sort((a, b) => a.level - b.level)[0];
+  if (slot && (!mod || slot <= mod.level)) {
+    return { level: slot, icon: 'sprout', label: `A ${ordinal(slotsAtLevel(slot))} habit slot` };
+  }
+  return mod ? { level: mod.level, icon: mod.icon, label: mod.label } : null;
+}
+
+function ordinal(n) {
+  const names = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth',
+                 'seventh', 'eighth', 'ninth', 'tenth'];
+  return names[n] || `${n}th`;
 }
 
 function wireQuestToast() {

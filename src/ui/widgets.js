@@ -4,6 +4,7 @@
 import { h, raw, esc, bar, ring, pill } from './dom.js';
 import { getState } from '../core/store.js';
 import { levelFromXp, rankFor, attrSummary } from '../core/game.js';
+import { nextRewardAfter } from '../core/unlocks.js';
 import { CATEGORIES, STATUS, ATTRS, CATEGORY_ATTR } from '../core/schema.js';
 import { streakOf, statusOf, atRisk, weeklyRemaining } from '../core/habits.js';
 import { icon } from './icons.js';
@@ -22,6 +23,9 @@ import { sideStatus } from '../core/quests.js';
 export function heroCard(state = getState(), { rank = false } = {}) {
   const lv = levelFromXp(state.game.xp);
   const r = rank ? rankFor(lv.level) : null;
+  // A level number on its own answers nothing. The reward it is heading toward
+  // is the only thing that makes the bar worth filling, so it goes on the bar.
+  const next = nextRewardAfter(lv.level);
   return h`
     <div class="hero">
       <div class="hero__level">
@@ -33,6 +37,12 @@ export function heroCard(state = getState(), { rank = false } = {}) {
         <div class="mono muted" style="font-size:.78rem">${lv.into} / ${lv.need}</div>
       </div>
       <div style="margin-top:11px">${bar(lv.pct, { color: 'var(--accent)' })}</div>
+      ${next ? raw(h`
+        <div class="hero__next">
+          ${icon(next.icon, { size: 15 })}
+          <span class="grow">${next.label}</span>
+          <span>level ${next.level}</span>
+        </div>`) : raw('')}
     </div>`;
 }
 

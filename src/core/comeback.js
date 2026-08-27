@@ -155,7 +155,7 @@ export const CAUSES = [
 /* Slots open on the same thresholds as the ranks, so the two progressions
    agree instead of running on separate numbers. Three to start, matching the
    advice the app gives everywhere else. */
-const SLOT_LEVELS = [5, 10, 16, 24, 34, 46];
+export const SLOT_LEVELS = [5, 10, 16, 24, 34, 46];
 export const BASE_SLOTS = 3;
 export const MAX_SLOTS = BASE_SLOTS + SLOT_LEVELS.length;
 

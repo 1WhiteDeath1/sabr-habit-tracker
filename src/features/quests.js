@@ -44,7 +44,21 @@ export const questsScreen = {
           <div class="card">${raw(attrStrip(state))}</div>
         </div>
 
-        <div class="section-title"><span>Main quests</span></div>
+        <div class="card" style="padding:11px 14px">
+          ${raw(qaRow('How any of this works',
+            raw(`<p><strong>XP</strong> comes from doing the things — a habit is 6 to 14, a class attended is 8,
+                 a deadline closed is 16 to 55. It is never taken away.</p>
+                 <p><strong>Levels</strong> are what XP buys you. Each one either adds a habit slot or puts a new
+                 part of the app on the shelf. The bar at the top of this screen names the next one.</p>
+                 <p><strong>Quests</strong> are not tasks — there is nothing here to tick. They are chains that
+                 watch what you are already doing and pay out when you cross a number. You do not start them
+                 and you cannot fail them; the only thing you do is claim one when it lights up.</p>
+                 <p><strong>The five attributes</strong> above are just XP sorted by which part of your life it
+                 came from. Prayer feeds Ruh, exercise feeds Jasad, study feeds Aql.</p>`)))}
+        </div>
+
+        <div class="section-title"><span>Main quests</span>
+          <span class="muted" style="text-transform:none;letter-spacing:0">claim when they light up</span></div>
         <div class="path">
           ${raw(board.map((row, i) => pathNode(row, i, i === nextIndex)).join(''))}
         </div>
@@ -120,6 +134,7 @@ function pathNode(row, index, isNext) {
           <div class="pathnode__chain">${quest.chainTitle}</div>
           <div class="pathnode__title">${done ? 'Chain complete' : quest.title}</div>
           ${done ? raw('') : raw(h`<div class="pathnode__prog">${progress.value} / ${progress.target}</div>`)}
+          ${done || locked ? raw('') : raw(h`<div class="pathnode__note">${quest.note}</div>`)}
         </div>
       </div>
     </div>`;

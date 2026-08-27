@@ -4,10 +4,10 @@
 import { h, raw, esc, actions, haptic, toast, confirmSheet, bar, xpBurst, qa, qaRow } from '../ui/dom.js';
 import { getState, mutate, exportJSON, importJSON, replaceState, flush } from '../core/store.js';
 import { defaultState, XP, CATEGORIES } from '../core/schema.js';
-import { levelFromXp } from '../core/game.js';
+import { levelFromXp, attrSummary } from '../core/game.js';
 import { grantXp } from '../core/game.js';
 import { dayProgress, streakOf, completionRate } from '../core/habits.js';
-import { todayKey, lastNDays, weekOf, addDays, prettyDay, keyToDate, dayKey, daysBetween } from '../core/dates.js';
+import { todayKey, lastNDays, weekOf, addDays, prettyDay, keyToDate, dayKey, daysBetween, rangeKeys } from '../core/dates.js';
 import { spanWeeks, countdown, ageOn, weekLabel, isDayKey } from '../core/horizons.js';
 import { recoveryStats } from '../core/recovery.js';
 import { METHODS, prayerTimesFor } from '../core/prayer.js';
@@ -82,6 +82,12 @@ function renderProfile() {
           <div class="stat"><div class="stat__n">${logged}</div><div class="stat__l">days logged</div></div>
           <div class="stat"><div class="stat__n">${totalDone}</div><div class="stat__l">habits done</div></div>
           <div class="stat"><div class="stat__n">${best?.s || 0}</div><div class="stat__l">best streak</div></div>
+        </div>
+
+        <div class="section-title"><span>Your shape</span></div>
+        <div class="stack-sm">
+          ${raw(attrRadar(state))}
+          ${raw(rhythmChart(state))}
         </div>
 
         <div class="section-title"><span>The last year</span></div>
@@ -770,6 +776,130 @@ function walletLine(state) {
   if (next.phase === 'buyable') return `${free} · ${next.def.label} is affordable now`;
   if (next.phase === 'broke') return `${free} · ${next.short} short of ${next.def.label.toLowerCase()}`;
   return `${free} · ${next.def.label} at level ${next.opensAt}`;
+}
+
+/* ====================================================================== */
+/* The shape of it.                                                       */
+/*                                                                        */
+/* The five attributes were five numbers in a row, which tells you what    */
+/* they are and nothing about how they relate. A pentagon tells you the    */
+/* thing the numbers cannot: whether you are building a person or a        */
+/* spike. That is the fact worth being proud of, or worth noticing.        */
+/* ====================================================================== */
+
+/**
+ * The attribute pentagon.
+ *
+ * Radius is scaled against your own strongest attribute rather than an
+ * absolute ceiling, so the shape is always readable — an absolute scale would
+ * render a beginner as a dot in the middle and tell them nothing. The faint
+ * outer ring is your best, so the gaps are the story.
+ */
+function attrRadar(state) {
+  const attrs = attrSummary(state);
+  const size = 200;
+  const c = size / 2;
+  const rMax = 74;
+  const peak = Math.max(1, ...attrs.map((a) => a.level));
+
+  const pt = (i, r) => {
+    const ang = (-90 + i * (360 / attrs.length)) * (Math.PI / 180);
+    return [c + Math.cos(ang) * r, c + Math.sin(ang) * r];
+  };
+  const poly = (r) => attrs.map((_, i) => pt(i, typeof r === 'function' ? r(i) : r).map((n) => n.toFixed(1)).join(',')).join(' ');
+
+  const shape = poly((i) => (attrs[i].level / peak) * rMax);
+  const rings = [0.25, 0.5, 0.75, 1].map((f) =>
+    `<polygon class="radar__ring" points="${poly(rMax * f)}"/>`).join('');
+  const spokes = attrs.map((_, i) => {
+    const [x, y] = pt(i, rMax);
+    return `<line class="radar__spoke" x1="${c}" y1="${c}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`;
+  }).join('');
+  const dots = attrs.map((a, i) => {
+    const [x, y] = pt(i, (a.level / peak) * rMax);
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${a.color}"/>`;
+  }).join('');
+  const labels = attrs.map((a, i) => {
+    const [x, y] = pt(i, rMax + 17);
+    return `<text class="radar__lbl" x="${x.toFixed(1)}" y="${y.toFixed(1)}"
+             text-anchor="middle" dominant-baseline="middle" fill="${a.color}">${a.level}</text>`;
+  }).join('');
+
+  return h`
+    <div class="card radarcard">
+      ${raw(qaRow('The shape of you',
+        'Each corner is one attribute and the distance out is its level, measured against your own strongest one rather than a fixed ceiling — so this is about balance, not size. A spike means one part of your life is carrying the whole app. A wide even shape is the thing to aim at, and it is much harder than a spike.'))}
+      <div class="radarcard__body">
+        <svg class="radar" viewBox="0 0 ${size} ${size}" role="img" aria-label="Attribute balance">
+          ${raw(rings)}${raw(spokes)}
+          <polygon class="radar__fill" points="${shape}"/>
+          ${raw(dots)}${raw(labels)}
+        </svg>
+        <div class="radarkey">
+          ${attrs.map((a) => raw(h`
+            <div class="radarkey__r">
+              <span class="radarkey__d" style="background:${raw(a.color)}"></span>
+              <span class="grow">${a.label}</span>
+              <span class="radarkey__n">${a.level}</span>
+            </div>`))}
+        </div>
+      </div>
+    </div>`;
+}
+
+/**
+ * Twelve weeks of completions, as bars.
+ *
+ * The year grid answers "did I turn up", one pixel per day. This answers the
+ * question that actually predicts whether you are still here in March: is the
+ * trend going up. Bars are scaled to the tallest week so a quiet stretch still
+ * reads as bars rather than as an empty chart.
+ */
+function rhythmChart(state) {
+  const WEEKS = 12;
+  const today = todayKey();
+  const weeks = [];
+  for (let w = WEEKS - 1; w >= 0; w -= 1) {
+    const end = addDays(today, -w * 7);
+    const start = addDays(end, -6);
+    let n = 0;
+    for (const day of rangeKeys(start, end)) {
+      const log = state.logs[day];
+      if (!log) continue;
+      n += Object.values(log).filter((e) => e && (e.status === 'done' || e.status === 'partial')).length;
+    }
+    weeks.push({ n, start, end, current: w === 0 });
+  }
+
+  const peak = Math.max(1, ...weeks.map((w) => w.n));
+  const total = weeks.reduce((a, w) => a + w.n, 0);
+  // Compare the last four weeks with the four before them — a month is long
+  // enough to be a trend and short enough to still be about now.
+  const recent = weeks.slice(-4).reduce((a, w) => a + w.n, 0);
+  const prior = weeks.slice(-8, -4).reduce((a, w) => a + w.n, 0);
+  const delta = prior ? Math.round(((recent - prior) / prior) * 100) : null;
+
+  return h`
+    <div class="card rhythm">
+      <div class="row-between">
+        <span class="card__title" style="margin:0">Last twelve weeks</span>
+        ${delta !== null ? raw(h`
+          <span class="pill ${delta >= 0 ? 'pill--green' : ''}">
+            ${delta >= 0 ? '+' : ''}${delta}% vs the month before
+          </span>`) : raw('')}
+      </div>
+
+      <div class="rhythm__bars">
+        ${weeks.map((w) => raw(h`
+          <div class="rhythm__col ${w.current ? 'is-now' : ''}" title="${prettyDay(w.start)} — ${w.n} done">
+            <div class="rhythm__bar" style="height:${Math.max(3, (w.n / peak) * 100).toFixed(1)}%"></div>
+          </div>`))}
+      </div>
+      <div class="rhythm__foot">
+        <span>${total} completed in twelve weeks</span>
+        <span>best week ${peak}</span>
+      </div>
+    </div>`;
 }
 
 function fmtMin(m) {

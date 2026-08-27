@@ -7,8 +7,32 @@ import { mutate, getState } from './store.js';
 import { ATTRS, ATTR_ORDER, CATEGORY_ATTR, XP } from './schema.js';
 
 /** XP required to go from `level` to `level + 1`. Gently superlinear. */
+/**
+ * XP to get from `level` to the next one.
+ *
+ * Was `40 + 25 * level`, which made the whole ladder collapse: a committed day
+ * is worth 150-ish XP and a maximal one over 300, so every module in the app
+ * unlocked inside the first week and level 24 arrived in three weeks. A reward
+ * that arrives before you have done the thing it is meant to be rewarding is
+ * not a reward, it is decoration.
+ *
+ * The slope is steeper and, more importantly, it grows: each level costs 90 XP
+ * more than the one before, so cumulative cost is quadratic while daily earning
+ * is roughly flat. That is what makes the late levels a matter of months rather
+ * than of one heroic weekend.
+ *
+ * The first two are deliberately discounted. The opening level-up teaches what
+ * levelling IS, and it has to land in the first day or two or it teaches
+ * nothing. Everything after that is paced against a committed day:
+ *
+ *   L2   90 XP     about a day          L10   4,530    about a month
+ *   L5   1,030     about a week         L24   26,300   about six months
+ *   L6   1,550     about ten days       L46   96,150   about two years
+ */
 export function xpToNext(level) {
-  return 40 + 25 * level;
+  if (level === 1) return 90;
+  if (level === 2) return 170;
+  return 70 + 90 * level;
 }
 
 /** Total XP required to have reached `level`. */
