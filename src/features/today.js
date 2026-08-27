@@ -10,6 +10,7 @@ import { prayerWindow } from '../core/prayer.js';
 import { passageFor } from '../data/scripture.js';
 import { todaysOffers, sideStatus, acceptSide, completeSide } from '../core/quests.js';
 import { themeOf } from '../data/quests.js';
+import { comboMultiplier } from '../core/game.js';
 import { isOwned } from '../core/unlocks.js';
 import { recoveryStats } from '../core/recovery.js';
 import { habitRow, passageCard, dayRing, timeGroup, evidenceCard, attrColorFor, sideQuestCard } from '../ui/widgets.js';
@@ -94,16 +95,7 @@ export const todayScreen = {
         </header>
 
         <div class="stack">
-          <div class="card" data-coach="ring" style="padding:12px 14px">
-            <div class="row" style="gap:14px">
-              ${raw(dayRing(progress))}
-              <div style="text-align:right;flex:none">
-                <div class="muted" style="font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:800">Next</div>
-                <div style="font-weight:700;font-size:.92rem">${PRAYER_LABEL[win.next] || win.next}</div>
-                <div class="mono muted" style="font-size:.78rem;font-weight:700">${fmtCountdown(win.minutesToNext)}</div>
-              </div>
-            </div>
-          </div>
+          <div data-coach="ring">${raw(dayBanner(state, key, progress, win, streak))}</div>
 
           ${state.recovery.enabled ? raw(h`
             <div class="row" style="gap:8px">
@@ -137,7 +129,7 @@ export const todayScreen = {
             actionLabel: 'Open the library',
             action: 'library',
           })) : raw(groups.map((g) => h`
-            ${raw(timeGroup(g.label, g.at))}
+            ${raw(phaseMark(g.label, g.at, g.id === win.current))}
             ${g.items.map((it) => raw(habitRow(it.habit, key, { state })))}
           `).join(''))}
 
@@ -476,6 +468,101 @@ function openPosting(id) {
       });
     },
   });
+}
+
+/* ====================================================================== */
+/* The day, as a run.                                                     */
+/*                                                                        */
+/* Today was a checklist with a small progress card above it. What makes a */
+/* day feel like a run rather than a list is three things it did not have: */
+/*                                                                        */
+/*   A state.   The day is open, or it is clear. Those look different, and */
+/*              clearing it is an event rather than a percentage reaching  */
+/*              a hundred quietly.                                        */
+/*   Weight.    Every objective is not worth the same. Each habit now      */
+/*              carries the metal of its rank and what it actually pays,   */
+/*              so a Diamond sitting in the list reads as the hard one.    */
+/*   A clock.   The day has phases, and one of them is now.               */
+/* ====================================================================== */
+
+/** XP taken from today's habit rows, counted off the entries themselves. */
+function haulToday(state, key) {
+  const log = state.logs[key] || {};
+  return Object.values(log).reduce((n, e) => n + (Number(e && e.xp) || 0), 0);
+}
+
+/**
+ * The banner.
+ *
+ * Deliberately not a card: it is the frame the day sits in, so it spans the
+ * full width and carries its own ground. When the last habit lands it turns
+ * gold and stops reporting a percentage — a finished day should say it is
+ * finished, not say "100%".
+ */
+function dayBanner(state, key, progress, win, streak) {
+  const haul = haulToday(state, key);
+  const combo = comboMultiplier(streak.now);
+  const clear = progress.total > 0 && progress.done >= progress.total;
+
+  return h`
+    <div class="hud ${clear ? 'is-clear' : ''}">
+      <div class="hud__glow" aria-hidden="true"></div>
+
+      <div class="hud__main">
+        ${raw(hudRing(progress, clear))}
+        <div class="hud__body">
+          <div class="hud__k">${clear ? 'The day is clear' : 'The day'}</div>
+          <div class="hud__t">${progress.total === 0
+            ? 'Nothing due'
+            : clear ? `All ${progress.total} held`
+            : `${progress.done} of ${progress.total} held`}</div>
+          <div class="hud__stats">
+            <span class="hud__stat">${icon('bolt', { size: 13 })}${haul} XP</span>
+            ${combo > 1 ? raw(h`<span class="hud__stat is-combo">${icon('flame', { size: 13 })}×${combo.toFixed(2).replace(/0$/, '')}</span>`) : raw('')}
+            ${streak.now ? raw(h`<span class="hud__stat">${streak.now}d run</span>`) : raw('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="hud__foot">
+        <span class="hud__phase">${PRAYER_LABEL[win.next] || win.next}</span>
+        <span class="hud__in">in ${fmtCountdown(win.minutesToNext)}</span>
+      </div>
+    </div>`;
+}
+
+/** The ring, drawn a little heavier than the old one so it carries the block. */
+function hudRing(progress, clear) {
+  const r = 30;
+  const c = 2 * Math.PI * r;
+  const off = c * (1 - Math.max(0, Math.min(1, progress.pct)));
+  return `
+    <div class="hud__ring">
+      <svg viewBox="0 0 72 72" aria-hidden="true">
+        <circle cx="36" cy="36" r="${r}" class="hud__track"/>
+        <circle cx="36" cy="36" r="${r}" class="hud__fill ${clear ? 'is-clear' : ''}"
+                stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+      </svg>
+      <span class="hud__pct">${progress.total === 0 ? '—' : `${Math.round(progress.pct * 100)}`}</span>
+    </div>`;
+}
+
+/**
+ * A phase marker.
+ *
+ * The prayer groups were labels. They are markers now, with a rule running out
+ * from them and the one you are currently inside picked out, so the list reads
+ * as a day being walked through rather than as five headings.
+ */
+function phaseMark(label, minutes, isNow) {
+  return h`
+    <div class="phase ${isNow ? 'is-now' : ''}">
+      <span class="phase__dot" aria-hidden="true"></span>
+      <span class="phase__l">${label}</span>
+      ${minutes != null ? raw(h`<span class="phase__t">${prettyTime(minutes)}</span>`) : raw('')}
+      <span class="phase__rule" aria-hidden="true"></span>
+      ${isNow ? raw(h`<span class="phase__now">now</span>`) : raw('')}
+    </div>`;
 }
 
 /** A row in "More today" — a label and a chevron, nothing explaining itself.

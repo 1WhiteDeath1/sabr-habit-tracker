@@ -64,6 +64,28 @@ export const DIFFICULTY = {
 };
 
 /** Is this rank open at this level yet? */
+/**
+ * What holding a habit of each rank pays per day.
+ *
+ * These were flat: every habit paid XP.habitFull regardless of rank, so a
+ * Diamond that cost 260 to buy returned exactly what a 20 XP Bronze did. That
+ * made the rank on the row a decoration and made buying anything difficult
+ * strictly the worse deal.
+ *
+ * The spread is deliberately much flatter than the price spread — thirteen
+ * times the cost, three times the return. Enough that difficulty is worth
+ * something, not enough to make a day of small habits feel like a wasted one.
+ * The app's whole argument is that a small set held well beats a big set held
+ * badly, and an economy that paid proportionally would be arguing the opposite.
+ */
+export const TIER_PAY = { 1: 10, 2: 14, 3: 18, 4: 24, 5: 30 };
+
+/** Full, two-minute and partial payouts for a rank, keeping the old ratios. */
+export function payoutFor(tier) {
+  const full = TIER_PAY[tier] ?? TIER_PAY[2];
+  return { full, tiny: Math.round(full * 0.43), partial: Math.round(full * 0.57) };
+}
+
 export function tierOpenAt(tier, level) {
   return level >= (DIFFICULTY[tier]?.minLevel ?? 1);
 }

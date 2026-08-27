@@ -3,9 +3,10 @@
 
 import { h, raw, esc, bar, ring, pill } from './dom.js';
 import { getState } from '../core/store.js';
-import { playerLevel, rankFor, attrSummary } from '../core/game.js';
+import { playerLevel, rankFor, attrSummary, comboMultiplier } from '../core/game.js';
 import { nextRewardAfter } from '../core/unlocks.js';
-import { CATEGORIES, STATUS, ATTRS, CATEGORY_ATTR } from '../core/schema.js';
+import { CATEGORIES, STATUS, ATTRS, CATEGORY_ATTR, XP } from '../core/schema.js';
+import { DIFFICULTY, payoutFor } from '../core/economy.js';
 import { streakOf, statusOf, atRisk, weeklyRemaining } from '../core/habits.js';
 import { icon } from './icons.js';
 import { isEasy } from '../core/comeback.js';
@@ -77,8 +78,16 @@ export function habitRow(habit, key, { variant = 'today', state = getState() } =
   // the row, and the row is the only thing this app really has.
   const easy = isEasy(habit, key);
 
+  // The rank the habit was bought at, carried onto the row. A day made of one
+  // Diamond and three Bronze should look like that — objectives that are not
+  // worth the same should not be drawn the same, which is the whole reason a
+  // list of tasks feels flatter than a set of them.
+  const tier = DIFFICULTY[habit.difficulty] || DIFFICULTY[2];
+  const worth = Math.round(payoutFor(habit.difficulty).full * comboMultiplier(streak));
+
   const cls = [
     'habitrow',
+    `metal--${tier.metal}`,
     status === STATUS.DONE ? 'is-done' : '',
     status === STATUS.PARTIAL ? 'is-partial' : '',
     status === STATUS.SKIP ? 'is-skip' : '',
@@ -108,7 +117,9 @@ export function habitRow(habit, key, { variant = 'today', state = getState() } =
       <div class="habitrow__main" data-act="${variant === 'today' ? 'detail' : 'edit'}" data-id="${habit.id}">
         <span class="habitrow__title">${habit.emoji && variant === 'today'
           ? raw(`<span class="habitrow__te">${habit.emoji}</span>`) : raw('')}${habit.title}</span>
-        ${meta.length ? raw(h`<span class="habitrow__meta">${meta.map((m) => raw(
+        ${variant === 'today' && status !== STATUS.DONE && status !== STATUS.SKIP
+        ? raw(h`<span class="habitrow__worth">+${worth}</span>`) : raw('')}
+      ${meta.length ? raw(h`<span class="habitrow__meta">${meta.map((m) => raw(
           typeof m === 'string'
             ? `<span>${esc(m)}</span>`
             : `<span>${icon(m.ico, { size: 13 })}${esc(m.text)}</span>`))}</span>`) : raw('')}

@@ -2555,3 +2555,121 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
   .gateway.is-open .gateway__go { animation: none; }
   .crest__fill { transition: none; }
 }
+
+/* ====================================================================== */
+/* Today — the day as a run.                                              */
+/* ====================================================================== */
+
+.hud {
+  position: relative; overflow: hidden;
+  padding: 16px 17px 0; border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+}
+.hud__glow {
+  position: absolute; top: -70px; left: -20px; width: 220px; height: 200px;
+  pointer-events: none; opacity: 0;
+  background: radial-gradient(circle, var(--gold-soft) 0%, transparent 66%);
+  transition: opacity .4s var(--ease);
+}
+.hud.is-clear { border-color: var(--gold); }
+.hud.is-clear .hud__glow { opacity: 1; }
+[data-theme="dark"] .hud.is-clear .hud__glow {
+  background: radial-gradient(circle, rgba(211,171,78,.22) 0%, transparent 66%);
+}
+
+.hud__main { position: relative; z-index: 1; display: flex; align-items: center; gap: 15px; }
+
+.hud__ring { position: relative; width: 72px; height: 72px; flex: none; }
+.hud__ring svg { width: 72px; height: 72px; max-width: none; transform: rotate(-90deg); }
+.hud__track { fill: none; stroke: var(--surface-3); stroke-width: 7; }
+.hud__fill {
+  fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round;
+  transition: stroke-dashoffset .45s var(--ease), stroke .3s var(--ease);
+}
+.hud__fill.is-clear { stroke: var(--gold); }
+.hud__pct {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 1.15rem; font-weight: 800; letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__body { min-width: 0; flex: 1; }
+.hud__k {
+  font-size: .64rem; letter-spacing: .18em; text-transform: uppercase;
+  font-weight: 800; color: var(--muted);
+}
+.hud.is-clear .hud__k { color: var(--gold-edge); }
+[data-theme="dark"] .hud.is-clear .hud__k { color: var(--gold); }
+.hud__t { font-size: 1.12rem; font-weight: 700; letter-spacing: -.02em; margin-top: 2px; }
+.hud__stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.hud__stat {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--surface-3); color: var(--text-2);
+  font-size: .72rem; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.hud__stat.is-combo { background: var(--gold-soft); color: var(--gold-edge); }
+[data-theme="dark"] .hud__stat.is-combo { background: var(--surface-3); color: var(--gold); }
+
+.hud__foot {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 8px;
+  margin: 14px -17px 0; padding: 10px 17px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: .76rem; font-weight: 750;
+}
+.hud__phase { letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); }
+.hud__in { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* ---- phases ---- */
+
+.phase {
+  display: flex; align-items: center; gap: 8px;
+  margin: 22px 0 9px;
+}
+.phase__dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--border-str);
+}
+.phase.is-now .phase__dot {
+  background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+[data-theme="dark"] .phase.is-now .phase__dot { box-shadow: 0 0 0 3px rgba(79,174,116,.2); }
+.phase__l {
+  font-size: .7rem; letter-spacing: .14em; text-transform: uppercase;
+  font-weight: 800; color: var(--muted); flex: none;
+}
+.phase.is-now .phase__l { color: var(--text); }
+.phase__t {
+  font-size: .7rem; font-weight: 700; color: var(--muted); flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.phase__rule { flex: 1; height: 1px; background: var(--border); }
+.phase__now {
+  flex: none; padding: 2px 8px; border-radius: 999px;
+  background: var(--accent); color: #fff;
+  font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 850;
+}
+
+/* ---- rows carry their rank ---- */
+
+/* A hairline of the habit's metal down the leading edge. Enough to sort the
+   list by weight at a glance, not enough to become five competing colours. */
+.habitrow { position: relative; }
+.habitrow::before {
+  content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--m, transparent);
+  opacity: .85;
+}
+.habitrow.is-done::before, .habitrow.is-skip::before { opacity: .25; }
+
+.habitrow__worth {
+  position: absolute; right: 13px; top: 11px;
+  font-size: .7rem; font-weight: 850; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  opacity: .75;
+}
+.habitrow.is-risk .habitrow__worth { color: var(--red); opacity: 1; }

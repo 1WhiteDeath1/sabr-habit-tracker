@@ -6,7 +6,7 @@
 import { getState, mutate } from './store.js';
 import { STATUS, makeHabit, CATEGORY_ATTR, SLOTS } from './schema.js';
 import { grantXp, comboMultiplier, playerLevel, XP } from './game.js';
-import { syncSpent } from './economy.js';
+import { syncSpent, payoutFor } from './economy.js';
 import { todayKey, addDays, weekdayOf, weekOf, lastNDays, daysBetween, dayKey } from './dates.js';
 import { prayerTimesFor } from './prayer.js';
 
@@ -68,9 +68,11 @@ export function setStatus(habitId, key, status, { tier = 'full', note = '' } = {
   // handles it; the amount is recorded on the entry so the reversal can be
   // exact rather than a guess at what the combo happened to be at the time.
   if (!clearing && (status === STATUS.DONE || status === STATUS.PARTIAL) && !existing) {
+    // Paid by the habit's rank rather than a flat rate — see payoutFor().
+    const pay = payoutFor(habit.difficulty);
     const base = status === STATUS.PARTIAL
-      ? XP.habitPartial
-      : (tier === 'tiny' ? XP.habitTiny : XP.habitFull);
+      ? pay.partial
+      : (tier === 'tiny' ? pay.tiny : pay.full);
     const streak = streakOf(habit, getState(), key);
     const paid = grantXp(base * comboMultiplier(streak), CATEGORY_ATTR[habit.category] || 'aql');
     mutate((s) => {
