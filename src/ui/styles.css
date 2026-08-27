@@ -1592,3 +1592,153 @@ a.wallet { display: block; text-decoration: none; color: inherit; }
 /* A deadline worth more today than it will be on the last afternoon. */
 .pricepill.is-early { background: var(--blue-soft); color: var(--blue-edge); }
 [data-theme="dark"] .pricepill.is-early { background: var(--surface-3); color: var(--blue); }
+
+/* ====================================================================== */
+/* The streak.                                                            */
+/*                                                                        */
+/* Duolingo's flame is a character with a face that reacts to you. This    */
+/* one is a vessel that fills. The only thing it ever does is get more     */
+/* full, and the only thing it says is a number.                          */
+/* ====================================================================== */
+
+:root {
+  --flame-hot: #ff7a18;
+  --flame-mid: #ff9f2e;
+  --flame-tip: #ffd257;
+  --flame-dead: var(--surface-3);
+}
+:root:not([data-theme="light"]) {
+  --flame-hot: #ff8c33;
+  --flame-mid: #ffab45;
+  --flame-tip: #ffdf7d;
+}
+[data-theme="dark"] {
+  --flame-hot: #ff8c33;
+  --flame-mid: #ffab45;
+  --flame-tip: #ffdf7d;
+}
+
+.flame { display: block; max-width: none; }
+.flame__shell {
+  fill: var(--flame-dead);
+  stroke: var(--border);
+  stroke-width: 1.1;
+}
+.flame__core { fill: rgba(255, 255, 255, .55); }
+.flame.is-cold .flame__core { fill: none; }
+
+/* ---- the card ---- */
+
+.streakcard { padding: 15px 16px 13px; }
+.streakcard__top { display: flex; align-items: center; gap: 16px; }
+
+.streakcard__flame { position: relative; flex: none; display: grid; place-items: center; }
+.streakcard__run {
+  position: absolute;
+  font-size: 1.5rem; font-weight: 900; letter-spacing: -.04em;
+  color: #fff; text-shadow: 0 1px 3px rgba(120, 50, 0, .55);
+  font-variant-numeric: tabular-nums;
+  transform: translateY(6px);
+}
+.streakcard.is-cold .streakcard__run { color: var(--muted); text-shadow: none; }
+
+.streakcard__nums { min-width: 0; }
+.streakcard__totn {
+  font-size: 2.7rem; font-weight: 900; line-height: 1;
+  letter-spacing: -.045em; font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.streakcard__totl {
+  font-size: .72rem; font-weight: 800; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-2); margin-top: 4px;
+}
+.streakcard__sub {
+  margin-top: 7px; font-size: .82rem; font-weight: 700; color: var(--muted);
+}
+.streakcard__sub span { opacity: .8; }
+
+.streakcard__bar {
+  height: 8px; border-radius: 999px; background: var(--surface-3);
+  margin-top: 14px; overflow: hidden;
+}
+.streakcard__bar i {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--flame-hot), var(--flame-tip));
+  transition: width .3s var(--ease);
+}
+.streakcard__nextl {
+  margin-top: 8px; display: flex; align-items: center; gap: 8px;
+  font-size: .82rem; font-weight: 700; color: var(--text-2);
+}
+.streakcard__nextl strong { color: var(--text); }
+.streakcard__nextl .pricepill { margin-left: auto; }
+
+/* ---- the vesting ladder ---- */
+
+.markers {
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 5px; margin-top: 14px;
+}
+.marker {
+  aspect-ratio: 1; border-radius: 10px;
+  display: grid; place-items: center;
+  background: var(--surface-2); border: 2px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.marker__d { font-size: .68rem; font-weight: 850; color: var(--muted); }
+/* Earned is permanent: this rule never consults the current run. */
+.marker.is-earned {
+  background: linear-gradient(160deg, var(--flame-mid), var(--flame-hot));
+  border-color: var(--flame-hot);
+}
+.marker.is-earned .marker__d { color: #fff; }
+.marker.is-current { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--flame-hot); }
+
+/* ---- rukhsah ---- */
+
+.rukhsah { margin-top: 13px; padding-top: 11px; border-top: 2px solid var(--border); }
+.rukhsah > summary {
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  list-style: none; font-size: .82rem; font-weight: 700; color: var(--text-2);
+}
+.rukhsah > summary::-webkit-details-marker { display: none; }
+.rukhsah__pips { display: flex; gap: 4px; flex: none; }
+.rukhsah__pips i {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--surface-3); border: 2px solid var(--border);
+}
+.rukhsah__pips i.is-held { background: var(--green); border-color: var(--green); }
+.rukhsah__body {
+  margin: 9px 0 0; font-size: .8rem; line-height: 1.55;
+  font-weight: 600; color: var(--muted);
+}
+.rukhsah__body em { font-style: italic; color: var(--text-2); }
+
+/* ---- a marker reached ---- */
+
+.milestone { display: flex; align-items: center; gap: 12px; }
+.milestone__ico { flex: none; display: grid; place-items: center; }
+.milestone__t { font-weight: 850; font-size: .95rem; letter-spacing: -.01em; }
+.milestone__s { font-size: .79rem; font-weight: 650; color: var(--text-2); margin-top: 2px; }
+
+/* ---- a run that ended ---- */
+/* No red, no broken graphic, no apology. It is a record card. */
+
+.breakcard { border-color: var(--border); }
+.breakcard__n {
+  font-size: 2.6rem; font-weight: 900; line-height: 1;
+  letter-spacing: -.045em; color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.breakcard__t {
+  font-size: .95rem; font-weight: 800; margin-top: 3px; color: var(--text);
+}
+.breakcard__body {
+  margin: 10px 0 13px; font-size: .85rem; line-height: 1.6;
+  font-weight: 600; color: var(--text-2);
+}
+
+/* The top-bar run. Small on purpose — the number that carries the weight is
+   the lifetime total on Today, and this is a way back to it. */
+.tb--streak { gap: 3px; color: var(--flame-hot); }
+.tb--streak.is-cold { color: var(--muted); opacity: .75; }

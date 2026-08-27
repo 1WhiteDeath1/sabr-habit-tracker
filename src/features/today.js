@@ -17,6 +17,9 @@ import { classesOn, markAttendance, attendanceOverview, upcomingTasks, overdueTa
 import { openSos } from './sos.js';
 import { sfx } from '../core/audio.js';
 import { icon } from '../ui/icons.js';
+import { streakState, milestoneDue, claimMilestone, pendingBreak, acknowledgeBreak,
+         RUKHSAH_EVERY, RUKHSAH_MAX } from '../core/streak.js';
+import { confetti } from '../ui/confetti.js';
 
 /** Group the day's items under the prayer window each one falls into. */
 function groupByWindow(items, times) {
@@ -60,6 +63,9 @@ export const todayScreen = {
     const risky = items.map((i) => i.habit).filter((hab) => atRisk(hab, state, key));
     const offers = isOwned('sidequests', state) ? todaysOffers(state) : [];
     const rec = recoveryStats(state);
+    const streak = streakState(state);
+    const due = milestoneDue(state);
+    const broke = pendingBreak(state);
     const passage = passageFor(now >= 20 * 60 ? 'night' : now < 11 * 60 ? 'morning' : 'stalling', key);
     const name = state.profile.name ? `, ${state.profile.name}` : '';
 
@@ -117,6 +123,10 @@ export const todayScreen = {
               <span class="listrow__chev">\u203A</span>
             </button>`) : raw('')}
 
+          ${broke ? raw(breakCard(broke, streak)) : raw('')}
+          ${due ? raw(milestoneCard(due)) : raw('')}
+          ${raw(streakCard(state))}
+
           ${risky.length ? raw(riskCard(risky)) : raw('')}
           ${state.academics.enabled ? raw(attendanceBlock(state)) : raw('')}
 
@@ -142,6 +152,19 @@ export const todayScreen = {
 
   mount(root) {
     actions(root, {
+      claimms: (el, ds) => {
+        const m = claimMilestone(Number(ds.d));
+        if (!m) return;
+        sfx('levelup');
+        haptic([18, 50, 22, 50, 30]);
+        confetti({ count: 110, origin: el.getBoundingClientRect() });
+        xpBurst(m.xp, el, 'var(--gold)');
+        toast(m.name, { icon: icon('flame'), tone: 'good', ms: 3200 });
+        refresh();
+      },
+      // Acknowledging a break is the one place the app deliberately does
+      // nothing else: no XP, no consolation prize, no offer to buy it back.
+      seenbreak: () => { acknowledgeBreak(); haptic(10); refresh(); },
       toggle: (el, ds) => toggleHabit(ds.id, el),
       detail: (el, ds) => openHabitDetail(ds.id),
       library: () => go('habits/library'),
@@ -161,6 +184,190 @@ export const todayScreen = {
     });
   },
 };
+
+/* ==================================================================== */
+/* The streak.                                                          */
+/*                                                                      */
+/* Duolingo's flame is a character: it has a face, it bounces, it looks  */
+/* sad at you. That works on a twelve-year-old learning Spanish and it   */
+/* reads as manipulation to an adult trying to fix his prayers. This one */
+/* is drawn in the same duotone geometry as every other icon in the app  */
+/* — a shape, lit or unlit, no expression — and it does not move except  */
+/* to fill.                                                             */
+/*                                                                      */
+/* Layout is the argument. The lifetime total is the largest thing on    */
+/* the card because it is the number that cannot fall; the run sits      */
+/* inside the flame at half the size. When a run breaks, the biggest     */
+/* number on the screen does not move, and that is the whole point.      */
+/* ==================================================================== */
+
+/**
+ * The flame, at a given fill level.
+ *
+ * `lit` is 0..1 — the fraction of the way to the next marker. The inner body
+ * is clipped to that height, so a young streak is an outline with a little
+ * light at the base and a mature one is solid. Nothing animates on a timer;
+ * the only movement is the fill changing between renders, which means the
+ * graphic never demands attention it has not earned.
+ */
+function flameSvg(lit, size = 92, cold = false) {
+  const id = 'fl' + Math.random().toString(36).slice(2, 7);
+  const fill = Math.max(0, Math.min(1, lit));
+  // 4 is the tip, 23 the base, in the 24-unit viewBox.
+  const y = 23 - (fill * 19);
+
+  return `
+    <svg class="flame ${cold ? 'is-cold' : ''}" viewBox="0 0 24 24" width="${size}" height="${size}"
+         role="img" aria-hidden="true">
+      <defs>
+        <clipPath id="${id}">
+          <rect x="0" y="${y.toFixed(2)}" width="24" height="24"></rect>
+        </clipPath>
+        <linearGradient id="${id}g" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0"   stop-color="var(--flame-hot)"></stop>
+          <stop offset=".55" stop-color="var(--flame-mid)"></stop>
+          <stop offset="1"   stop-color="var(--flame-tip)"></stop>
+        </linearGradient>
+      </defs>
+
+      <!-- the vessel: always present, so an empty streak is a shape you have
+           not filled rather than an absence -->
+      <path class="flame__shell"
+        d="M12 2.6c.9 3.2 2.6 4.5 4.3 6.5 1.6 1.9 2.6 3.9 2.6 6.1A6.9 6.9 0 0 1 12 21.6a6.9 6.9 0 0 1-6.9-6.4c0-2.6 1.3-4.4 2.7-6.2.6-.8 1.2-1.6 1.5-2.5.5 1 1.2 1.7 2 2.4.5-1.9.6-4 .7-6.3Z"/>
+
+      <g clip-path="url(#${id})">
+        <path fill="url(#${id}g)"
+          d="M12 2.6c.9 3.2 2.6 4.5 4.3 6.5 1.6 1.9 2.6 3.9 2.6 6.1A6.9 6.9 0 0 1 12 21.6a6.9 6.9 0 0 1-6.9-6.4c0-2.6 1.3-4.4 2.7-6.2.6-.8 1.2-1.6 1.5-2.5.5 1 1.2 1.7 2 2.4.5-1.9.6-4 .7-6.3Z"/>
+        <!-- the inner core, so a long streak reads as hotter rather than merely
+             larger -->
+        <path class="flame__core"
+          d="M12 12.2c.6 1.5 1.9 2.2 1.9 3.9A2.1 2.1 0 0 1 12 18.4a2.1 2.1 0 0 1-1.9-2.3c0-1.6 1.3-2.4 1.9-3.9Z"/>
+      </g>
+    </svg>`;
+}
+
+/**
+ * The streak card.
+ *
+ * Reads top to bottom as: what you have (permanent), what you are on (fragile),
+ * what is next, what protects you. The fragile thing is third.
+ */
+function streakCard(state) {
+  const s = streakState(state);
+  const cold = !s.keptToday && s.now === 0;
+
+  return h`
+    <div class="card streakcard ${cold ? 'is-cold' : ''}">
+      <div class="streakcard__top">
+        <div class="streakcard__flame">
+          ${raw(flameSvg(s.pct, 92, cold))}
+          <span class="streakcard__run">${s.now}</span>
+        </div>
+
+        <div class="streakcard__nums">
+          <div class="streakcard__totn">${s.total}</div>
+          <div class="streakcard__totl">days kept, all time</div>
+          <div class="streakcard__sub">
+            ${s.now === 1 ? raw('1 day running') : raw(h`${s.now} days running`)}
+            ${s.best > s.now ? raw(h` <span>· best ${s.best}</span>`) : raw('')}
+          </div>
+        </div>
+      </div>
+
+      ${s.next ? raw(h`
+        <div class="streakcard__bar"><i style="width:${(s.pct * 100).toFixed(1)}%"></i></div>
+        <div class="streakcard__nextl">
+          ${s.toNext} more to <strong>${s.next.name}</strong>
+          <span class="pricepill">+${s.next.xp}</span>
+        </div>`) : raw(h`
+        <div class="streakcard__nextl">Every marker there is, reached.</div>`)}
+
+      ${raw(markerRow(s))}
+      ${raw(rukhsahRow(s.rukhsah))}
+    </div>`;
+}
+
+/**
+ * The vesting ladder.
+ *
+ * Earned markers stay lit whatever the current run is doing. This row is the
+ * visible promise that a break does not undo anything, so it renders the same
+ * on the day you break a hundred-day run as it did the day before.
+ */
+function markerRow(s) {
+  return h`
+    <div class="markers">
+      ${s.all.map((m) => raw(h`
+        <div class="marker ${m.earned ? 'is-earned' : ''} ${m.current ? 'is-current' : ''}"
+             title="${m.name}${m.earned ? ' — earned' : ` — ${m.days} days`}">
+          <span class="marker__d">${m.days}</span>
+        </div>`))}
+    </div>`;
+}
+
+/** What you are holding against a bad day. */
+function rukhsahRow(r) {
+  return h`
+    <details class="rukhsah">
+      <summary>
+        <span class="rukhsah__pips">
+          ${[...Array(r.max)].map((_, i) => raw(h`<i class="${i < r.held ? 'is-held' : ''}"></i>`))}
+        </span>
+        <span class="grow">${r.held
+          ? raw(h`${r.held} rukhsah held`)
+          : raw(h`No rukhsah · ${r.toNext} days to the next`)}</span>
+        <i class="qa__mark" aria-hidden="true">?</i>
+      </summary>
+      <p class="rukhsah__body">
+        A <em>rukhsah</em> is the concession already built into the law — the traveller
+        shortens the prayer, the ill do not fast. You earn one for every
+        ${RUKHSAH_EVERY} days you keep, you can hold ${RUKHSAH_MAX}, and one is spent
+        automatically on a day you missed. It is not bought and it is not a trick:
+        it is the app agreeing that some days are legitimately not available to you.
+      </p>
+    </details>`;
+}
+
+/**
+ * A milestone reached and not yet taken.
+ *
+ * The only place in the streak system that celebrates, and it does it once.
+ */
+function milestoneCard(m) {
+  return h`
+    <div class="card card--gold milestone">
+      <div class="milestone__ico">${raw(flameSvg(1, 40))}</div>
+      <div class="grow">
+        <div class="milestone__t">${m.name}</div>
+        <div class="milestone__s">${m.note}</div>
+      </div>
+      <button class="btn btn--gold btn--sm" data-act="claimms" data-d="${m.days}">+${m.xp}</button>
+    </div>`;
+}
+
+/**
+ * The card shown after a run ends.
+ *
+ * This is the screen the whole design exists for. Duolingo shows a broken heart
+ * and an offer to buy the streak back; the research says that framing — the
+ * abstinence violation effect — is what converts one missed day into quitting
+ * altogether. So: no apology, no consolation, no purchase. State the number,
+ * state that it is kept, and put the next action in reach.
+ */
+function breakCard(b, s) {
+  return h`
+    <div class="card breakcard">
+      <div class="breakcard__n">${b.was}</div>
+      <div class="breakcard__t">days, and that run has ended.</div>
+      <p class="breakcard__body">
+        It stays in your record: ${s.total} days kept all time, best run ${s.best}.
+        ${s.earned.length ? raw(h`Every marker you passed is still yours.`) : raw('')}
+        Nothing has been taken off you — the counter starts again, and that is all
+        that has happened.
+      </p>
+      <button class="btn btn--primary btn--block" data-act="seenbreak">Start the next one</button>
+    </div>`;
+}
 
 /** A row in "More today" — a label and a chevron, nothing explaining itself.
  *  The parameter is `ico` and not `icon`: the latter would shadow the import. */

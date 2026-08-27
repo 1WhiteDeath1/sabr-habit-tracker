@@ -9,6 +9,7 @@ import { creditCleanDay } from './core/recovery.js';
 import { initNotifications } from './core/notify.js';
 import { initAudio, setSound, sfx } from './core/audio.js';
 import { accrue } from './core/stake.js';
+import { settleRukhsah, settleStreak, streakNow } from './core/streak.js';
 import { confetti } from './ui/confetti.js';
 import { todayKey } from './core/dates.js';
 
@@ -118,6 +119,11 @@ function boot() {
   // Bring the stake ledger up to date once per launch. Only fully finished days
   // are ever counted, so today is never charged while it can still be fixed.
   try { accrue(); } catch (_) { /* a broken stake must not stop the app booting */ }
+  // Order matters: concessions are spent against missed days FIRST, so that a
+  // day a rukhsah covers never registers as a break at all. Settling the other
+  // way round would show someone the "your run ended" card and then quietly
+  // un-end it, which is worse than either outcome on its own.
+  try { settleRukhsah(); settleStreak(); } catch (_) { /* never block boot */ }
 
   subscribe(() => paintNav(parse()));
   wireLevelUp();
@@ -196,15 +202,21 @@ function paintTopbar(route) {
   // is one tap away in the Vault.
   const w = wallet(state);
 
-  // One system only. A streak here would be an app-wide average of chains that
-  // are individually visible on the habit rows, and a clean-day count belongs
-  // to Shield — both competed with the number they were summarising.
+  // This used to say a streak had no place up here, and that was right while
+  // the only streaks were per-habit: an app-wide average of chains already
+  // visible on the rows summarised nothing. core/streak.js is a real day-level
+  // run, so it earns the slot. It is shown small and next to nothing else —
+  // the number that matters is the lifetime total on Today, and this chip is a
+  // way back to it rather than the headline itself.
+  const run = streakNow(state);
   const alerts = badgeCount(state);
 
   bar.innerHTML = `
     <button class="tb tb--xp${w.balance ? '' : ' is-zero'}" data-vault
             title="${w.balance} XP free of ${w.earned} earned — open the wallet">${ICON.bolt}${w.balance}</button>
     <div class="tb tb--level" title="Level">${ICON.star}${lv.level}</div>
+    <button class="tb tb--streak${run ? '' : ' is-cold'}" data-streak
+            title="${run} day run — your record is on Today">${icon('flame', { size: 17 })}${run}</button>
     <button class="tb tb--bell${alerts ? ' has-alerts' : ''}" data-bell aria-label="What is coming up">
       ${icon(alerts ? 'bell' : 'bellOff', { size: 23 })}
       ${alerts ? `<span class="tb__badge">${alerts > 9 ? '9+' : alerts}</span>` : ''}
@@ -212,6 +224,7 @@ function paintTopbar(route) {
 
   bar.querySelector('[data-bell]')?.addEventListener('click', openUpcoming);
   bar.querySelector('[data-vault]')?.addEventListener('click', () => { haptic(8); go('vault'); });
+  bar.querySelector('[data-streak]')?.addEventListener('click', () => { haptic(8); go('today'); });
 }
 
 /* ------------------------------------------------------- the bell panel */

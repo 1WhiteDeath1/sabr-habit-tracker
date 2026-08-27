@@ -211,6 +211,17 @@ export function makeGame(patch = {}) {
     unlocked: [],      // achievement ids
     lastLevel: 1,      // used to detect a level-up and celebrate it exactly once
     seenIntro: false,
+
+    /* ---- the day streak (core/streak.js) ---------------------------------
+     * The current run is never stored: it is derived from the logs, so it can
+     * never drift from them. What IS stored is only the things arithmetic
+     * cannot recover — the high-water mark, which must outlive the run that
+     * set it, and the concessions already spent. */
+    bestDayStreak: 0,      // longest run ever; milestones vest against this
+    lastStreak: 0,         // last run seen, to notice a break exactly once
+    lastBreak: null,       // {at, was, on, seen} — the record of a fall
+    milestonesClaimed: [], // milestone day-counts already celebrated
+    rukhsah: { covered: [] }, // day keys a concession has been spent on
     ...patch,
   };
 }
@@ -237,7 +248,10 @@ export function defaultState() {
     // clear forever while the thing it was about is still true.
     notifications: { day: null, dismissed: [] },
     game: makeGame(),
-    streakFreezes: 2,  // "never miss twice" grace — see RESEARCH.neverMissTwice
+    // Was a dead field for the whole life of this app: collected on every save
+    // and never read once. Superseded by game.rukhsah, which is the same idea
+    // with an earning rule and a spend path — see core/streak.js.
+    streakFreezes: 2,
     createdAt: Date.now(),
     lastOpened: null,
   };
