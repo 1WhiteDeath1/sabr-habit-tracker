@@ -55,14 +55,26 @@ export function levelFromXp(xp) {
   return { level, into: remaining, need, pct: Math.min(1, remaining / need) };
 }
 
+/**
+ * The rank ladder, and therefore where the walls are — see core/ascend.js.
+ *
+ * The first wall was at 5, which on the current XP curve is about a week in:
+ * too early for a hard stop, and early enough that a new player meets a locked
+ * door before they have any sense of what the door is for. It sits at 8 now.
+ *
+ * Moving only that one left Saalik two levels wide with the next wall directly
+ * behind it, so the whole ladder is re-spaced. The gaps widen monotonically —
+ * 7, 6, 7, 8, 9, 10 — which is the shape a climb should have: the early bands
+ * pass quickly and the later ones are meant to be lived in.
+ */
 export const RANKS = [
   { from: 1,  name: 'Mubtadi',   meaning: 'the one who has begun' },
-  { from: 5,  name: 'Saalik',    meaning: 'the traveller on the path' },
-  { from: 10, name: 'Mujtahid',  meaning: 'the one who exerts effort' },
-  { from: 16, name: 'Muraabit',  meaning: 'the one who holds his post' },
-  { from: 24, name: 'Saabir',    meaning: 'the steadfast' },
-  { from: 34, name: 'Mustaqim',  meaning: 'the upright, unwavering' },
-  { from: 46, name: 'Muhsin',    meaning: 'the one who acts with excellence' },
+  { from: 8,  name: 'Saalik',    meaning: 'the traveller on the path' },
+  { from: 14, name: 'Mujtahid',  meaning: 'the one who exerts effort' },
+  { from: 21, name: 'Muraabit',  meaning: 'the one who holds his post' },
+  { from: 29, name: 'Saabir',    meaning: 'the steadfast' },
+  { from: 38, name: 'Mustaqim',  meaning: 'the upright, unwavering' },
+  { from: 48, name: 'Muhsin',    meaning: 'the one who acts with excellence' },
 ];
 
 export function rankFor(level) {

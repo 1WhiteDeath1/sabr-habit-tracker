@@ -34,7 +34,7 @@ import { ageInDays } from './habits.js';
  */
 export const ASCENSIONS = [
   {
-    rank: 1, level: 5, name: 'Saalik', meaning: 'the traveller on the path',
+    rank: 1, level: 8, name: 'Saalik', meaning: 'the traveller on the path',
     blurb: 'You have started. This proves you can hold it for a week.',
     reqs: [
       { id: 'streak', n: 7, label: 'A 7-day run' },
@@ -42,7 +42,7 @@ export const ASCENSIONS = [
     ],
   },
   {
-    rank: 2, level: 10, name: 'Mujtahid', meaning: 'the one who exerts effort',
+    rank: 2, level: 14, name: 'Mujtahid', meaning: 'the one who exerts effort',
     blurb: 'Effort, not intention. A trial finished is the difference.',
     reqs: [
       { id: 'streak', n: 21, label: 'A 21-day run' },
@@ -50,7 +50,7 @@ export const ASCENSIONS = [
     ],
   },
   {
-    rank: 3, level: 16, name: 'Muraabit', meaning: 'the one who holds his post',
+    rank: 3, level: 21, name: 'Muraabit', meaning: 'the one who holds his post',
     blurb: 'Holding a post means being there on the days it is dull.',
     reqs: [
       { id: 'streak', n: 30, label: 'A 30-day run' },
@@ -59,7 +59,7 @@ export const ASCENSIONS = [
     ],
   },
   {
-    rank: 4, level: 24, name: 'Saabir', meaning: 'the steadfast',
+    rank: 4, level: 29, name: 'Saabir', meaning: 'the steadfast',
     blurb: 'Sixty-six days is where a habit stops being a decision.',
     reqs: [
       { id: 'streak', n: 66, label: 'A 66-day run' },
@@ -67,7 +67,7 @@ export const ASCENSIONS = [
     ],
   },
   {
-    rank: 5, level: 34, name: 'Mustaqim', meaning: 'the upright, unwavering',
+    rank: 5, level: 38, name: 'Mustaqim', meaning: 'the upright, unwavering',
     blurb: 'Not one habit carrying you. Several, held at once.',
     reqs: [
       { id: 'streak', n: 100, label: 'A 100-day run' },
@@ -76,7 +76,7 @@ export const ASCENSIONS = [
     ],
   },
   {
-    rank: 6, level: 46, name: 'Muhsin', meaning: 'the one who acts with excellence',
+    rank: 6, level: 48, name: 'Muhsin', meaning: 'the one who acts with excellence',
     blurb: 'Half a year unbroken. There is nothing above this one.',
     reqs: [
       { id: 'streak', n: 180, label: 'A 180-day run' },
