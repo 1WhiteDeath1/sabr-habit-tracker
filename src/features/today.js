@@ -3,12 +3,13 @@
 
 import { h, raw, actions, haptic, toast, xpBurst, sheet, empty, bar, qaRow } from '../ui/dom.js';
 import { getState } from '../core/store.js';
-import { STATUS, PRAYER_LABEL, CATEGORIES } from '../core/schema.js';
+import { STATUS, PRAYER_LABEL, CATEGORIES, XP } from '../core/schema.js';
 import { dayPlan, dayProgress, setStatus, statusOf, atRisk, streakOf, ageInDays, completionRate, undoTick } from '../core/habits.js';
 import { todayKey, prettyDayLong, minutesNow, prettyTime, parseHM, daysBetween } from '../core/dates.js';
 import { prayerWindow } from '../core/prayer.js';
 import { passageFor } from '../data/scripture.js';
 import { todaysOffers, sideStatus, acceptSide, completeSide } from '../core/quests.js';
+import { themeOf } from '../data/quests.js';
 import { isOwned } from '../core/unlocks.js';
 import { recoveryStats } from '../core/recovery.js';
 import { habitRow, passageCard, dayRing, timeGroup, evidenceCard, attrColorFor, sideQuestCard } from '../ui/widgets.js';
@@ -76,11 +77,7 @@ export const todayScreen = {
     const later = [
       state.academics.enabled ? classesBlock(state, key) : '',
       state.academics.enabled ? deadlinesBlock(state) : '',
-      // The full cards used to be duplicated in here, two taps down, where a
-      // thing that expires at midnight is never seen. They live at the top of
-      // the Quests tab now; this is the pointer to them.
-      offers.length ? listLink('quests', icon('target'),
-        `Today’s side quests · ${offers.filter((q) => sideStatus(q.id, state) !== 'done').length} open`) : '',
+
       // Only advertise a module that is actually switched on — a shortcut into
       // a locked screen is a dead end dressed up as a suggestion.
       running || !isOwned('focus', state) ? '' : listLink('focus', icon('target'), 'Start a focus block'),
@@ -127,6 +124,8 @@ export const todayScreen = {
           ${broke ? raw(breakCard(broke, streak)) : raw('')}
           ${due ? raw(milestoneCard(due)) : raw('')}
           ${raw(streakCard(state))}
+
+          ${offers.length ? raw(bulletinBoard(state, offers)) : raw('')}
 
           ${risky.length ? raw(riskCard(risky)) : raw('')}
           ${state.academics.enabled ? raw(attendanceBlock(state)) : raw('')}
@@ -177,6 +176,7 @@ export const todayScreen = {
       absent:  (el, ds) => { markAttendance(ds.id, todayKey(), ATTEND.ABSENT);  haptic(10); refresh(); },
       task:    (el, ds) => { toggleTask(ds.id); sfx('tiny'); haptic([12, 30, 16]); refresh(); },
       sos:     () => openSos(),
+      posting: (el, ds) => openPosting(ds.id),
       accept:  (el, ds) => { acceptSide(ds.id); haptic(10); refresh(); },
       complete:(el, ds) => {
         const xp = completeSide(ds.id);
@@ -369,6 +369,113 @@ function breakCard(b, s) {
       </p>
       <button class="btn btn--primary btn--block" data-act="seenbreak">Start the next one</button>
     </div>`;
+}
+
+/* ====================================================================== */
+/* The board.                                                             */
+/*                                                                        */
+/* Three contracts, pinned, rolled fresh every morning and gone at         */
+/* midnight. You read the postings, pick one that suits you, and take it   */
+/* down — the adventurers' guild board, which is the right metaphor        */
+/* because it carries the two rules that matter without stating either:    */
+/* a posting is an offer rather than an order, and nobody is chasing you   */
+/* about the ones you left up.                                            */
+/*                                                                        */
+/* It sits on Today because that is where the day is. It used to be two    */
+/* taps down inside a drawer, and before that at the bottom of a different */
+/* tab under fourteen quest chains.                                        */
+/* ====================================================================== */
+
+function bulletinBoard(state, offers) {
+  const open = offers.filter((q) => sideStatus(q.id, state) !== 'done').length;
+
+  return h`
+    <div class="bboard">
+      <div class="bboard__head">
+        <span class="bboard__title">The board</span>
+        <span class="bboard__sub">${open ? `${open} posted today` : 'All taken'}</span>
+      </div>
+      <div class="bboard__pins">
+        ${offers.map((q, i) => raw(posting(q, state, i)))}
+      </div>
+    </div>`;
+}
+
+/** One pinned posting. Deliberately terse — the detail is behind the tap. */
+function posting(q, state, i) {
+  const status = sideStatus(q.id, state);
+  const theme = themeOf(q);
+  // A slight, stable tilt per card so the board reads as paper rather than as
+  // a table. Derived from the id so it never changes between renders.
+  const tilt = ((q.id.charCodeAt(0) + i * 7) % 5) - 2;
+
+  return h`
+    <button class="posting is-${raw(status)}" style="--tilt:${tilt}deg"
+            data-act="posting" data-id="${q.id}">
+      <span class="posting__pin" aria-hidden="true"></span>
+      <span class="posting__tag" style="--pt:${raw(theme.color || 'var(--muted)')}">${theme.label}</span>
+      <span class="posting__t">${q.title}</span>
+      <span class="posting__foot">
+        <span class="posting__xp">+${XP.questSide} XP</span>
+        ${status === 'done' ? raw(h`<span class="posting__done">${icon('check', { size: 12 })} done</span>`)
+          : status === 'accepted' ? raw(h`<span class="posting__taken">taken</span>`) : raw('')}
+      </span>
+    </button>`;
+}
+
+/** Reading a posting properly, and taking it. */
+function openPosting(id) {
+  const state = getState();
+  const q = todaysOffers(state).find((x) => x.id === id);
+  if (!q) return;
+  const status = sideStatus(q.id, state);
+  const theme = themeOf(q);
+
+  sheet({
+    title: 'Posting',
+    body: h`
+      <div class="stack">
+        <div class="pdetail">
+          <span class="pdetail__tag" style="--pt:${raw(theme.color || 'var(--muted)')}">${theme.label}</span>
+          <div class="pdetail__t">${q.title}</div>
+          <p class="pdetail__d">${q.desc}</p>
+        </div>
+
+        ${q.why ? raw(h`
+          <div class="pdetail__why">
+            <span class="pdetail__k">Why it is worth doing</span>
+            <p>${q.why}</p>
+          </div>`) : raw('')}
+
+        <div class="pdetail__terms">
+          <div class="row-between"><span>Reward</span><span class="pricepill">+${XP.questSide} XP</span></div>
+          <div class="row-between"><span>Expires</span><span>Midnight tonight</span></div>
+          <div class="row-between"><span>Penalty for leaving it</span><span>None</span></div>
+        </div>
+      </div>`,
+    footer: status === 'done'
+      ? h`<button class="btn btn--ghost btn--block" disabled>${icon('check', { size: 15 })} Done today</button>`
+      : status === 'accepted'
+        ? h`<button class="btn btn--primary btn--block" data-do="finish">Mark it done</button>`
+        : h`<button class="btn btn--primary btn--block" data-do="take">Take it down</button>`,
+    onMount: (el, close) => {
+      el.addEventListener('click', (ev) => {
+        if (ev.target.closest('[data-do="take"]')) {
+          acceptSide(q.id); haptic(10); sfx('tiny');
+          toast('Taken. It is yours until midnight.');
+          close(); refresh();
+        }
+        if (ev.target.closest('[data-do="finish"]')) {
+          const xp = completeSide(q.id);
+          if (xp) {
+            sfx('claim'); haptic([12, 40, 18]);
+            toast(`${q.title} · +${xp} XP`, { icon: icon('trophy'), tone: 'good' });
+          }
+          close(); refresh();
+        }
+      });
+    },
+  });
 }
 
 /** A row in "More today" — a label and a chevron, nothing explaining itself.

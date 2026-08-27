@@ -21,7 +21,7 @@ import { getState, mutate } from './store.js';
 import { todayKey, addDays, daysBetween, dayKey } from './dates.js';
 import { isDue, statusOf, completionRate, ageInDays } from './habits.js';
 import { STATUS } from './schema.js';
-import { levelFromXp } from './game.js';
+import { playerLevel } from './game.js';
 
 /* ------------------------------------------------------------ being away */
 
@@ -191,7 +191,7 @@ export function habitsHolding(state = getState(), floor = 0.5) {
  * `canAdd` is the only field that should ever gate a button.
  */
 export function slotStatus(state = getState()) {
-  const level = levelFromXp(state.game.xp).level;
+  const level = playerLevel(state).level;
   const total = slotsAtLevel(level);
   const used = state.habits.filter((x) => !x.archived).length;
   const holding = habitsHolding(state);

@@ -5,7 +5,7 @@
 
 import { getState, mutate } from './store.js';
 import { STATUS, makeHabit, CATEGORY_ATTR, SLOTS } from './schema.js';
-import { grantXp, comboMultiplier, levelFromXp, XP } from './game.js';
+import { grantXp, comboMultiplier, playerLevel, XP } from './game.js';
 import { syncSpent } from './economy.js';
 import { todayKey, addDays, weekdayOf, weekOf, lastNDays, daysBetween, dayKey } from './dates.js';
 import { prayerTimesFor } from './prayer.js';
@@ -112,7 +112,7 @@ export function undoTick(habitId, key) {
       if (a && a in s.game.attrXp) s.game.attrXp[a] = Math.max(0, s.game.attrXp[a] - paid);
       // The level derives from xp and follows on its own, but lastLevel is
       // stored — leaving it high would swallow the next real level-up.
-      s.game.lastLevel = levelFromXp(s.game.xp).level;
+      s.game.lastLevel = playerLevel(s).level;
     }
   });
   return { undone: true, refunded: paid };

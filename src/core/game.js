@@ -71,6 +71,47 @@ export function rankFor(level) {
   return r;
 }
 
+/* ------------------------------------------------------------ the ceiling */
+
+/**
+ * Levels are capped at the next rank until you ascend through it.
+ *
+ * Monster Hunter's model, and Genshin's: you can grind all the experience you
+ * like, but the rank only moves when you clear the urgent quest. Two things
+ * make it work rather than merely frustrate — the wall is always visible from
+ * a long way off, and nothing is wasted while you sit under it. XP keeps
+ * banking, so passing the gate releases several levels at once, which is a far
+ * better moment than the same levels arriving one at a time.
+ *
+ * Kept here, as a pure function of a stored number, on purpose: the checks that
+ * decide whether you may ascend need streaks, trials and habit ages, and
+ * importing any of those into this file would close a cycle. core/ascend.js
+ * owns the requirements; this file only owns the ceiling they lift.
+ */
+export function levelCapFor(rank = 0) {
+  const next = RANKS[rank + 1];
+  return next ? next.from - 1 : Infinity;
+}
+
+/** The level you are actually playing at — XP, held down by the rank gate. */
+export function playerLevel(state) {
+  const raw = levelFromXp(state.game.xp);
+  const cap = levelCapFor(state.game.rank || 0);
+  if (raw.level <= cap) return { ...raw, capped: false, cap, banked: 0 };
+  // Everything above the ceiling is banked rather than lost, and reported so
+  // the ladder can show exactly what is waiting on the other side of the gate.
+  return {
+    level: cap,
+    into: xpToNext(cap),
+    need: xpToNext(cap),
+    pct: 1,
+    capped: true,
+    cap,
+    banked: state.game.xp - xpAtLevel(cap + 1),
+    wouldBe: raw.level,
+  };
+}
+
 /** Attributes level slower than the account level — they are the long game. */
 export function attrLevelFromXp(xp) {
   const level = Math.max(1, Math.floor(Math.sqrt(Math.max(0, xp) / 45)) + 1);
@@ -92,10 +133,11 @@ export function grantXp(amount, attrId = null, { silent = false } = {}) {
   if (!gained) return { gained: 0, leveledUp: false };
   let outcome = { gained, leveledUp: false, attr: attrId };
   mutate((s) => {
-    const before = levelFromXp(s.game.xp).level;
+    const cap = levelCapFor(s.game.rank || 0);
+    const before = Math.min(levelFromXp(s.game.xp).level, cap);
     s.game.xp += gained;
     if (attrId && attrId in s.game.attrXp) s.game.attrXp[attrId] += gained;
-    const after = levelFromXp(s.game.xp).level;
+    const after = Math.min(levelFromXp(s.game.xp).level, cap);
     outcome.level = after;
     if (after > before) {
       outcome.leveledUp = true;

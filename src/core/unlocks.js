@@ -14,7 +14,7 @@
 // permanently free and are never allowed in it.
 
 import { getState, mutate } from './store.js';
-import { levelFromXp } from './game.js';
+import { playerLevel } from './game.js';
 import { wallet, investedUnlocks } from './economy.js';
 import { UNLOCKS, UNLOCK_ORDER } from '../data/unlocks.js';
 import { SLOT_LEVELS, slotsAtLevel } from './comeback.js';
@@ -56,7 +56,7 @@ export function unlockStatus(id, state = getState()) {
   if (!def) return { id, phase: 'missing' };
 
   const rec = receipt(id, state);
-  const level = levelFromXp(state.game.xp).level;
+  const level = playerLevel(state).level;
   const balance = wallet(state).balance;
   const levelOk = level >= def.level;
 

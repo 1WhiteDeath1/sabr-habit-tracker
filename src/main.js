@@ -3,7 +3,7 @@
 import { load, getState, subscribe, mutate, flush } from './core/store.js';
 import { register, setOutlet, setNotFound, start, onRouteChange, parse, go, refresh } from './core/router.js';
 import { setHaptics, haptic, toast, sheet, raw } from './ui/dom.js';
-import { levelFromXp, rankFor } from './core/game.js';
+import { playerLevel, rankFor } from './core/game.js';
 import { claimableCount } from './core/quests.js';
 import { creditCleanDay } from './core/recovery.js';
 import { initNotifications } from './core/notify.js';
@@ -207,7 +207,7 @@ function paintTopbar(route) {
   bar.classList.remove('hidden');
 
   const state = getState();
-  const lv = levelFromXp(state.game.xp);
+  const lv = playerLevel(state);
   // The chip shows what is FREE, not what is earned. Lifetime XP only ever goes
   // up, so as a headline it stops meaning anything after a fortnight; the free
   // balance is the number that changes when you make a decision, and it is the

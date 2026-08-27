@@ -27,7 +27,7 @@ export const vaultScreen = {
     const state = getState();
     const w = wallet(state);
     const st = slotStatus(state);
-    const lv = levelFromXp(state.game.xp);
+    const lv = playerLevel(state);
     const rows = allUnlockStatuses(state);
 
     const ownedRows = rows.filter((r) => r.phase === 'owned');

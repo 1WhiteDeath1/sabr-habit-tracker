@@ -229,6 +229,11 @@ export function makeGame(patch = {}) {
      * The one chain you have chosen to push on, and the one trial you have
      * accepted. Both are deliberately singular: fourteen parallel goals
      * motivate about as well as none. */
+    /* The rank you have ascended to. Holds the level ceiling — see
+     * levelCapFor() in game.js and the gates in core/ascend.js. */
+    rank: 0,
+    ascensions: [],        // [{rank, at}]
+
     pursuit: null,         // {chain, since}
     trial: null,           // {id, from, to, acceptedAt, settled}
     trialHistory: [],      // [{id, outcome, value, target, xp, endedAt}]

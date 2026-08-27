@@ -10,6 +10,8 @@ import { getState } from '../core/store.js';
 import { activeTrial, offered, acceptTrial, abandonTrial, settleTrial,
          trialProgress, daysLeft, isExpired, TRIAL_BY_ID } from '../core/trials.js';
 import { confetti } from '../ui/confetti.js';
+import { nextGate, ascend as doAscend, ladder } from '../core/ascend.js';
+import { playerLevel, rankFor } from '../core/game.js';
 import { mainBoard, claimMain, todaysOffers, sideStatus, acceptSide, completeSide,
          pursuit, setPursuit, isPursued, PURSUIT_BONUS } from '../core/quests.js';
 import { ATTRS } from '../core/schema.js';
@@ -41,25 +43,19 @@ export const questsScreen = {
     return h`
       <div class="screen">
         <header class="screen__head">
-          <div class="eyebrow">The next two weeks</div>
-          <h1>What you are pushing on</h1>
+          <div class="eyebrow">The ascent</div>
+          <h1>${rankFor(playerLevel(state).level).name}</h1>
         </header>
 
         <div class="stack">
+          ${raw(ascentHead(state))}
+          ${raw(gateCardAscent(state))}
           ${raw(pursuitCard(state))}
           ${raw(trialCard(state))}
         </div>
 
-        <div class="section-title"><span>Today’s side quests</span>
-          <span class="muted" style="text-transform:none;letter-spacing:0">gone at midnight</span></div>
-        ${sideOn ? raw(h`
-          <div class="card" style="padding:10px 14px;margin-bottom:12px">
-            ${raw(qaRow('Three offers, rolled fresh each morning',
-              'Skipping them costs nothing — no penalty, no backlog. They are here for the days you want more, not to give you a second job.'))}
-          </div>
-          <div class="stack-sm">
-            ${offers.map((q) => raw(sideQuestCard(q, state)))}
-          </div>`) : raw(gateCard('sidequests'))}
+        <div class="section-title"><span>The ladder</span></div>
+        ${raw(ladderList(state))}
 
         <div class="section-title"><span>Every chain</span>
           <span class="muted" style="text-transform:none;letter-spacing:0">counting whether you look or not</span></div>
@@ -95,6 +91,12 @@ export const questsScreen = {
       },
       qdetail: (el, ds) => openQuestDetail(ds.id),
       pickpursuit: () => openPursuitSheet(),
+      ascend: (el) => {
+        const res = doAscend();
+        if (!res) return;
+        celebrateAscension(res, el);
+        refresh();
+      },
       taketrial: (el, ds) => {
         acceptTrial(ds.id);
         sfx('claim'); haptic([16, 40, 22]);
@@ -333,6 +335,150 @@ function openPursuitSheet() {
       });
     },
   });
+}
+
+/* ====================================================================== */
+/* The Ascent.                                                            */
+/*                                                                        */
+/* The tab is a ladder now, not a list of quests. What it shows is where   */
+/* you are on it, what is banked, and the wall directly ahead with the     */
+/* exact things that open it.                                             */
+/*                                                                        */
+/* The wall is the borrowed idea. Monster Hunter will not raise your rank  */
+/* for grinding, only for clearing the urgent quest; Genshin banks the     */
+/* overflow so passing releases several levels in one go. Both are here,   */
+/* because a level that arrives purely because time passed is not an       */
+/* achievement, and this app is already full of those.                     */
+/* ====================================================================== */
+
+function ascentHead(state) {
+  const lv = playerLevel(state);
+  const r = rankFor(lv.level);
+  const gate = nextGate(state);
+
+  return h`
+    <div class="ascent">
+      <div class="ascent__lv">
+        <span class="ascent__n">${lv.level}</span>
+        ${lv.capped ? raw(h`<span class="ascent__lock">${icon('lock', { size: 13 })}</span>`) : raw('')}
+      </div>
+      <div class="ascent__who">
+        <div class="ascent__rank">${r.name}</div>
+        <div class="ascent__mean">${r.meaning}</div>
+      </div>
+
+      ${lv.capped
+        ? raw(h`
+          <div class="ascent__bar is-full"><i style="width:100%"></i></div>
+          <div class="ascent__cap">
+            ${icon('bolt', { size: 14 })}
+            <span class="grow"><strong>${lv.banked.toLocaleString()} XP</strong> banked · ${lv.wouldBe - lv.level} level${lv.wouldBe - lv.level === 1 ? '' : 's'} waiting</span>
+          </div>`)
+        : raw(h`
+          <div class="ascent__bar"><i style="width:${(lv.pct * 100).toFixed(1)}%"></i></div>
+          <div class="ascent__cap">
+            <span class="grow">${lv.need - lv.into} XP to level ${lv.level + 1}</span>
+            ${gate ? raw(h`<span class="muted">wall at ${gate.level}</span>`) : raw('')}
+          </div>`)}
+    </div>`;
+}
+
+/**
+ * The wall.
+ *
+ * Every requirement is listed with its real number whether it is met or not,
+ * because the single most annoying thing a gate can do is say "not yet"
+ * without saying which half you are waiting on.
+ */
+function gateCardAscent(state) {
+  const gate = nextGate(state);
+  if (!gate) {
+    return h`
+      <div class="card wall is-top">
+        <div class="wall__k">Muhsin</div>
+        <div class="wall__t">There is nothing above this.</div>
+        <p class="wall__b">Every rank taken. Levels run on freely from here.</p>
+      </div>`;
+  }
+
+  return h`
+    <div class="card wall ${gate.ready ? 'is-ready' : ''}">
+      <div class="row-between">
+        <span class="wall__k">${gate.ready ? 'The way is open' : `Rank ${gate.rank} · the wall at ${gate.level}`}</span>
+        <span class="wall__count">${gate.done}/${gate.reqs.length}</span>
+      </div>
+      <div class="wall__t">${gate.name}</div>
+      <div class="wall__m">${gate.meaning}</div>
+      <p class="wall__b">${gate.blurb}</p>
+
+      <div class="wall__reqs">
+        <div class="req ${gate.xpReady ? 'is-met' : ''}">
+          <span class="req__box">${gate.xpReady ? raw(icon('check', { size: 13 })) : raw('')}</span>
+          <span class="grow">Reach level ${gate.level}</span>
+          <span class="req__n">${Math.min(gate.xpHave, gate.level)}/${gate.level}</span>
+        </div>
+        ${gate.reqs.map((r) => raw(h`
+          <div class="req ${r.met ? 'is-met' : ''}">
+            <span class="req__box">${r.met ? raw(icon('check', { size: 13 })) : raw('')}</span>
+            <span class="grow">${r.label}</span>
+            <span class="req__n">${Math.min(r.have, r.n)}/${r.n}</span>
+          </div>`))}
+      </div>
+
+      ${gate.ready
+        ? raw(h`<button class="btn btn--primary btn--lg btn--block" data-act="ascend" style="margin-top:14px">
+            Ascend to ${gate.name}</button>`)
+        : raw('')}
+    </div>`;
+}
+
+/** The whole ladder, every rank, so the shape of the climb is visible. */
+function ladderList(state) {
+  const rows = ladder(state);
+  return h`
+    <div class="rungs">
+      ${rows.map((r) => raw(h`
+        <div class="rung ${r.held ? 'is-held' : ''} ${r.current ? 'is-current' : ''}">
+          <div class="rung__lv">${r.from}${r.to > r.from ? `–${r.to}` : ''}</div>
+          <div class="rung__body">
+            <div class="rung__name">${r.name}</div>
+            <div class="rung__mean">${r.meaning}</div>
+            <div class="rung__bar"><i style="width:${(r.pct * 100).toFixed(1)}%"></i></div>
+          </div>
+          <div class="rung__mark">
+            ${r.held ? raw(icon('check', { size: 15 }))
+              : r.gate ? raw(icon('lock', { size: 14 })) : raw('')}
+          </div>
+        </div>`))}
+    </div>`;
+}
+
+/** The moment of breaking through. */
+function celebrateAscension(res, el) {
+  sfx('levelup');
+  haptic([30, 60, 30, 60, 30, 60, 140]);
+  confetti({ count: 150, power: 15, origin: el?.getBoundingClientRect() });
+
+  const overlay = document.createElement('div');
+  overlay.className = 'levelup';
+  overlay.innerHTML = `
+    <div class="levelup__card">
+      <div class="levelup__rays" aria-hidden="true"></div>
+      <div class="levelup__badge"><span class="levelup__n">${res.to}</span></div>
+      <div class="levelup__eyebrow">Ascended</div>
+      <h1 class="levelup__h">${res.gate.name}</h1>
+      <p class="levelup__rank">${res.gate.meaning}</p>
+      <div class="lvrewards">
+        <div class="lvrewards__k">Released</div>
+        <div class="lvrow" style="--i:0"><span class="lvrow__e">⚡</span>
+          <span><strong>Level ${res.from} → ${res.to}</strong><em>${res.gained} level${res.gained === 1 ? '' : 's'} from banked XP</em></span></div>
+      </div>
+      <button class="btn btn--primary btn--lg btn--block levelup__go">Continue</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', close);
+  setTimeout(close, 6400);
 }
 
 /** Thin progress ring hugging a path node. */

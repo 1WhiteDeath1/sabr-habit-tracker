@@ -24,7 +24,7 @@
 // moves, and the non-punitive rule survives intact.
 
 import { getState, mutate } from './store.js';
-import { levelFromXp } from './game.js';
+import { playerLevel } from './game.js';
 
 /**
  * Five tiers. The prices are superlinear on purpose — a severe habit costs more
@@ -142,7 +142,7 @@ export function wallet(state = getState()) {
     onHabits: investedHabits(state),
     onUnlocks: investedUnlocks(state),
     balance: Math.max(0, earned - committed),
-    level: levelFromXp(state.game.xp).level,
+    level: playerLevel(state).level,
   };
 }
 

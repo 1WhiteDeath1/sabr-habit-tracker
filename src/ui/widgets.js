@@ -3,7 +3,7 @@
 
 import { h, raw, esc, bar, ring, pill } from './dom.js';
 import { getState } from '../core/store.js';
-import { levelFromXp, rankFor, attrSummary } from '../core/game.js';
+import { playerLevel, rankFor, attrSummary } from '../core/game.js';
 import { nextRewardAfter } from '../core/unlocks.js';
 import { CATEGORIES, STATUS, ATTRS, CATEGORY_ATTR } from '../core/schema.js';
 import { streakOf, statusOf, atRisk, weeklyRemaining } from '../core/habits.js';
@@ -21,7 +21,7 @@ import { sideStatus } from '../core/quests.js';
  * is at least actionable.
  */
 export function heroCard(state = getState(), { rank = false } = {}) {
-  const lv = levelFromXp(state.game.xp);
+  const lv = playerLevel(state);
   const r = rank ? rankFor(lv.level) : null;
   // A level number on its own answers nothing. The reward it is heading toward
   // is the only thing that makes the bar worth filling, so it goes on the bar.

@@ -4,7 +4,7 @@
 import { h, raw, actions, haptic, toast, sheet, confirmSheet, qaRow } from '../ui/dom.js';
 import { slotStatus, MAX_SLOTS } from '../core/comeback.js';
 import { DIFFICULTY, DIFFICULTY_ORDER, wallet, priceTag, difficultyOf, costOf } from '../core/economy.js';
-import { levelFromXp } from '../core/game.js';
+import { playerLevel } from '../core/game.js';
 import { STAKE_KINDS, describeStake, accrue, settle, startStake, stopStake } from '../core/stake.js';
 import { isOwned } from '../core/unlocks.js';
 import { gateCard, gateMount } from '../ui/gate.js';
@@ -227,7 +227,7 @@ function blocked(item) {
   if (item) {
     const tier = difficultyOf(item);
     const d = DIFFICULTY[tier];
-    const level = levelFromXp(getState().game.xp).level;
+    const level = playerLevel(getState()).level;
     if (level < d.minLevel) {
       toast(`${d.emoji} ${d.label} habits open at level ${d.minLevel}. You are level ${level}.`,
         { tone: 'warn', ms: 3400 });
@@ -279,7 +279,7 @@ function blocked(item) {
 
 function renderGallery(filter) {
   const state = getState();
-  const level = levelFromXp(state.game.xp).level;
+  const level = playerLevel(state).level;
   const w = wallet(state);
   const owned = new Set(state.habits.filter((x) => !x.archived).map((x) => x.title));
   const slots = slotStatus(state);
@@ -364,7 +364,7 @@ function openGalleryCard(title) {
   const item = LIBRARY.find((x) => x.title === title);
   if (!item) return;
   const state = getState();
-  const level = levelFromXp(state.game.xp).level;
+  const level = playerLevel(state).level;
   const d = DIFFICULTY[difficultyOf(item)];
   const w = wallet(state);
   const already = state.habits.some((x) => !x.archived && x.title === item.title);

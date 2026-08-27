@@ -4,7 +4,7 @@
 import { h, raw, esc, actions, haptic, toast, confirmSheet, bar, xpBurst, qa, qaRow } from '../ui/dom.js';
 import { getState, mutate, exportJSON, importJSON, replaceState, flush } from '../core/store.js';
 import { defaultState, XP, CATEGORIES } from '../core/schema.js';
-import { levelFromXp, attrSummary } from '../core/game.js';
+import { playerLevel, attrSummary } from '../core/game.js';
 import { grantXp } from '../core/game.js';
 import { dayProgress, streakOf, completionRate } from '../core/habits.js';
 import { todayKey, lastNDays, weekOf, addDays, prettyDay, keyToDate, dayKey, daysBetween, rangeKeys } from '../core/dates.js';
@@ -50,7 +50,7 @@ export const meScreen = {
 
 function renderProfile() {
   const state = getState();
-  const lv = levelFromXp(state.game.xp);
+  const lv = playerLevel(state);
   const rec = recoveryStats(state);
   const days = lastNDays(364);
   const logged = Object.keys(state.logs).length;
