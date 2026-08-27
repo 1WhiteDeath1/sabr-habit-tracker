@@ -42,9 +42,8 @@ export const questsScreen = {
 
     return h`
       <div class="screen">
-        <header class="screen__head">
+        <header class="screen__head screen__head--tight">
           <div class="eyebrow">The ascent</div>
-          <h1>${rankFor(playerLevel(state).level).name}</h1>
         </header>
 
         <div class="stack">
@@ -54,7 +53,7 @@ export const questsScreen = {
           ${raw(trialCard(state))}
         </div>
 
-        <div class="section-title"><span>The ladder</span></div>
+        <div class="section-title"><span>The climb</span></div>
         ${raw(ladderList(state))}
 
         <div class="section-title"><span>Every chain</span>
@@ -340,16 +339,36 @@ function openPursuitSheet() {
 /* ====================================================================== */
 /* The Ascent.                                                            */
 /*                                                                        */
-/* The tab is a ladder now, not a list of quests. What it shows is where   */
-/* you are on it, what is banked, and the wall directly ahead with the     */
-/* exact things that open it.                                             */
+/* This was a stack of cards with a checkbox list in it, which is a form.  */
+/* Three things separate a game screen from a form, and none of them is    */
+/* decoration:                                                            */
 /*                                                                        */
-/* The wall is the borrowed idea. Monster Hunter will not raise your rank  */
-/* for grinding, only for clearing the urgent quest; Genshin banks the     */
-/* overflow so passing releases several levels in one go. Both are here,   */
-/* because a level that arrives purely because time passed is not an       */
-/* achievement, and this app is already full of those.                     */
+/*   Place.  A climb is vertical and you are somewhere on it. The ladder   */
+/*           reads upward, with a spine running through it and your token  */
+/*           sitting on the rung you actually occupy.                      */
+/*   Ritual. A gate is a thing you break, not a form you complete. The     */
+/*           requirements are seals: unlit discs that take light as they   */
+/*           are met, and the gate opens only when the last one catches.   */
+/*   Weight. One emblem, large, at the top — the number that everything    */
+/*           else on the screen is about.                                  */
+/*                                                                        */
+/* Restraint is the constraint: gold on a dark ground, one glow, one       */
+/* pulse. The moment this reads as a slot machine it has failed a          */
+/* different way.                                                          */
 /* ====================================================================== */
+
+/** Progress drawn as an arc around the crest rather than a bar under it. */
+function crestRing(pct, sealed) {
+  const r = 52;
+  const c = 2 * Math.PI * r;
+  const off = c * (1 - Math.max(0, Math.min(1, pct)));
+  return `
+    <svg class="crest__ring" viewBox="0 0 120 120" aria-hidden="true">
+      <circle cx="60" cy="60" r="${r}" class="crest__track"/>
+      <circle cx="60" cy="60" r="${r}" class="crest__fill ${sealed ? 'is-sealed' : ''}"
+              stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+    </svg>`;
+}
 
 function ascentHead(state) {
   const lv = playerLevel(state);
@@ -357,97 +376,119 @@ function ascentHead(state) {
   const gate = nextGate(state);
 
   return h`
-    <div class="ascent">
-      <div class="ascent__lv">
-        <span class="ascent__n">${lv.level}</span>
-        ${lv.capped ? raw(h`<span class="ascent__lock">${icon('lock', { size: 13 })}</span>`) : raw('')}
+    <div class="crest ${lv.capped ? 'is-sealed' : ''}">
+      <div class="crest__halo" aria-hidden="true"></div>
+
+      <div class="crest__emblem">
+        ${raw(crestRing(lv.capped ? 1 : lv.pct, lv.capped))}
+        <div class="crest__inner">
+          <span class="crest__lv">${lv.level}</span>
+          <span class="crest__lvl">Level</span>
+        </div>
+        ${lv.capped ? raw(h`<span class="crest__seal">${icon('lock', { size: 14 })}</span>`) : raw('')}
       </div>
-      <div class="ascent__who">
-        <div class="ascent__rank">${r.name}</div>
-        <div class="ascent__mean">${r.meaning}</div>
-      </div>
+
+      <div class="crest__name">${r.name}</div>
+      <div class="crest__mean">${r.meaning}</div>
 
       ${lv.capped
         ? raw(h`
-          <div class="ascent__bar is-full"><i style="width:100%"></i></div>
-          <div class="ascent__cap">
-            ${icon('bolt', { size: 14 })}
-            <span class="grow"><strong>${lv.banked.toLocaleString()} XP</strong> banked · ${lv.wouldBe - lv.level} level${lv.wouldBe - lv.level === 1 ? '' : 's'} waiting</span>
+          <div class="crest__banked">
+            <span class="crest__bn">${lv.banked.toLocaleString()}</span>
+            <span class="crest__bl">XP held behind the seal · ${lv.wouldBe - lv.level} level${lv.wouldBe - lv.level === 1 ? '' : 's'}</span>
           </div>`)
         : raw(h`
-          <div class="ascent__bar"><i style="width:${(lv.pct * 100).toFixed(1)}%"></i></div>
-          <div class="ascent__cap">
-            <span class="grow">${lv.need - lv.into} XP to level ${lv.level + 1}</span>
-            ${gate ? raw(h`<span class="muted">wall at ${gate.level}</span>`) : raw('')}
+          <div class="crest__next">
+            ${lv.need - lv.into} XP to level ${lv.level + 1}${gate ? ` · seal at ${gate.level}` : ''}
           </div>`)}
     </div>`;
 }
 
 /**
- * The wall.
+ * The gate.
  *
- * Every requirement is listed with its real number whether it is met or not,
- * because the single most annoying thing a gate can do is say "not yet"
- * without saying which half you are waiting on.
+ * Each requirement is a seal — a disc that is dark until its condition is met
+ * and lit afterwards. Same information a checklist carried, arranged so that
+ * the screen has a state rather than a completion percentage: five dark discs
+ * is a different feeling from "0/5", and the last one catching is an event.
  */
 function gateCardAscent(state) {
   const gate = nextGate(state);
   if (!gate) {
     return h`
-      <div class="card wall is-top">
-        <div class="wall__k">Muhsin</div>
-        <div class="wall__t">There is nothing above this.</div>
-        <p class="wall__b">Every rank taken. Levels run on freely from here.</p>
+      <div class="gateway is-crowned">
+        <div class="gateway__k">Muhsin</div>
+        <div class="gateway__t">Every seal broken</div>
+        <p class="gateway__b">There is nothing above this rank. Levels run on freely from here.</p>
       </div>`;
   }
 
-  return h`
-    <div class="card wall ${gate.ready ? 'is-ready' : ''}">
-      <div class="row-between">
-        <span class="wall__k">${gate.ready ? 'The way is open' : `Rank ${gate.rank} · the wall at ${gate.level}`}</span>
-        <span class="wall__count">${gate.done}/${gate.reqs.length}</span>
-      </div>
-      <div class="wall__t">${gate.name}</div>
-      <div class="wall__m">${gate.meaning}</div>
-      <p class="wall__b">${gate.blurb}</p>
+  const seals = [
+    { label: `Level ${gate.level}`, have: Math.min(gate.xpHave, gate.level), n: gate.level, met: gate.xpReady, glyph: 'bolt' },
+    ...gate.reqs.map((r) => ({
+      label: r.label, have: Math.min(r.have, r.n), n: r.n, met: r.met,
+      glyph: r.id === 'streak' ? 'flame' : r.id === 'trials' ? 'trophy'
+        : r.id === 'automatic' ? 'sprout' : 'star',
+    })),
+  ];
+  const lit = seals.filter((s) => s.met).length;
 
-      <div class="wall__reqs">
-        <div class="req ${gate.xpReady ? 'is-met' : ''}">
-          <span class="req__box">${gate.xpReady ? raw(icon('check', { size: 13 })) : raw('')}</span>
-          <span class="grow">Reach level ${gate.level}</span>
-          <span class="req__n">${Math.min(gate.xpHave, gate.level)}/${gate.level}</span>
-        </div>
-        ${gate.reqs.map((r) => raw(h`
-          <div class="req ${r.met ? 'is-met' : ''}">
-            <span class="req__box">${r.met ? raw(icon('check', { size: 13 })) : raw('')}</span>
-            <span class="grow">${r.label}</span>
-            <span class="req__n">${Math.min(r.have, r.n)}/${r.n}</span>
+  return h`
+    <div class="gateway ${gate.ready ? 'is-open' : ''}">
+      <div class="gateway__arch" aria-hidden="true"></div>
+      <div class="gateway__k">${gate.ready ? 'The seal is broken' : `The ${ordinalWord(gate.rank)} seal`}</div>
+      <div class="gateway__t">${gate.name}</div>
+      <div class="gateway__m">${gate.meaning}</div>
+
+      <div class="seals">
+        ${seals.map((s) => raw(h`
+          <div class="seal ${s.met ? 'is-lit' : ''}">
+            <div class="seal__disc">${icon(s.glyph, { size: 19 })}</div>
+            <div class="seal__n">${s.have}<span>/${s.n}</span></div>
+            <div class="seal__l">${s.label}</div>
           </div>`))}
       </div>
 
       ${gate.ready
-        ? raw(h`<button class="btn btn--primary btn--lg btn--block" data-act="ascend" style="margin-top:14px">
-            Ascend to ${gate.name}</button>`)
-        : raw('')}
+        ? raw(h`
+          <button class="btn btn--primary btn--lg btn--block gateway__go" data-act="ascend">
+            Ascend to ${gate.name}
+          </button>`)
+        : raw(h`<p class="gateway__b">${gate.blurb}</p>
+                <div class="gateway__count">${lit} of ${seals.length} lit</div>`)}
     </div>`;
 }
 
-/** The whole ladder, every rank, so the shape of the climb is visible. */
+function ordinalWord(n) {
+  return ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth'][n] || `${n}th`;
+}
+
+/**
+ * The climb.
+ *
+ * Rendered top-down from the highest rank so it reads as something above you,
+ * with a spine connecting the rungs and your token on the one you hold. Ranks
+ * you have not reached name their seal level instead of their progress, so the
+ * track doubles as the map of what is left.
+ */
 function ladderList(state) {
-  const rows = ladder(state);
+  const rows = ladder(state).slice().reverse();
   return h`
-    <div class="rungs">
+    <div class="track">
       ${rows.map((r) => raw(h`
-        <div class="rung ${r.held ? 'is-held' : ''} ${r.current ? 'is-current' : ''}">
-          <div class="rung__lv">${r.from}${r.to > r.from ? `–${r.to}` : ''}</div>
-          <div class="rung__body">
-            <div class="rung__name">${r.name}</div>
-            <div class="rung__mean">${r.meaning}</div>
-            <div class="rung__bar"><i style="width:${(r.pct * 100).toFixed(1)}%"></i></div>
+        <div class="trung ${r.held ? 'is-held' : ''} ${r.current ? 'is-here' : ''}">
+          <div class="trung__spine" aria-hidden="true">
+            <span class="trung__node">${r.held ? raw(icon('check', { size: 12 })) : raw('')}</span>
           </div>
-          <div class="rung__mark">
-            ${r.held ? raw(icon('check', { size: 15 }))
-              : r.gate ? raw(icon('lock', { size: 14 })) : raw('')}
+          <div class="trung__card">
+            <div class="row-between">
+              <span class="trung__name">${r.name}</span>
+              <span class="trung__lv">${r.from}–${r.to}</span>
+            </div>
+            <div class="trung__mean">${r.meaning}</div>
+            ${r.held || r.current
+              ? raw(h`<div class="trung__bar"><i style="width:${(r.pct * 100).toFixed(1)}%"></i></div>`)
+              : raw(h`<div class="trung__locked">${icon('lock', { size: 12 })} seal at level ${r.from}</div>`)}
           </div>
         </div>`))}
     </div>`;
