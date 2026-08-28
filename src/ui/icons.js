@@ -26,7 +26,9 @@ const MONO = {
   star: '\u{2605}',
   gear: '\u{2699}\u{FE0E}',
   trend: '\u{2197}\u{FE0E}',
-  lock: '\u{1F512}',
+  // A padlock has no reliable text presentation, and a colour one in a
+  // dimmed tier band was the last sticker left in the chrome.
+  lock: '\u{2298}',
   ruh: '\u{2726}',
   jasad: '\u{25C6}',
   aql: '\u{25C8}',

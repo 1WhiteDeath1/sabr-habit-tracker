@@ -2904,63 +2904,6 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
 [data-theme="dark"] .crestbar__line b { color: var(--gold); }
 .crestbar__chev { flex: none; color: var(--muted); font-size: 1.3rem; z-index: 1; }
 
-/* ---- the tiles ---- */
-
-.tiles {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px;
-}
-.tile {
-  display: flex; flex-direction: column; gap: 3px; min-width: 0;
-  padding: 13px 13px 12px; border-radius: var(--r); text-align: left;
-  background: var(--surface); border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(16, 24, 32, .04);
-  cursor: pointer; font: inherit; color: inherit;
-  transition: transform .1s var(--ease);
-}
-[data-theme="dark"] .tile { box-shadow: none; }
-.tile:active { transform: translateY(1px); }
-
-.tile__top { display: flex; align-items: center; gap: 6px; }
-.tile__ico { flex: none; color: var(--muted); display: grid; place-items: center; }
-.tile__k {
-  font-size: .6rem; letter-spacing: .14em; text-transform: uppercase;
-  font-weight: 850; color: var(--muted); white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis;
-}
-.tile__badge {
-  margin-left: auto; flex: none; padding: 1px 7px; border-radius: 999px;
-  background: var(--gold); color: #4a3800;
-  font-size: .62rem; font-weight: 850; font-variant-numeric: tabular-nums;
-}
-.tile__t {
-  font-size: .95rem; font-weight: 750; letter-spacing: -.015em;
-  line-height: 1.25; margin-top: 3px; overflow-wrap: anywhere;
-}
-.tile__s {
-  font-size: .7rem; font-weight: 650; color: var(--text-2);
-  line-height: 1.35; overflow-wrap: anywhere;
-}
-.tile__bar {
-  height: 4px; border-radius: 999px; background: var(--surface-3);
-  overflow: hidden; margin-top: auto; margin-block-start: 9px;
-}
-.tile__bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
-.tile__pips { display: flex; gap: 4px; margin-top: auto; margin-block-start: 9px; }
-.tile__pips i {
-  flex: 1; height: 4px; border-radius: 999px; background: var(--surface-3);
-}
-.tile__pips i.is-on { background: var(--gold); }
-
-.tile.is-empty { border-style: dashed; }
-.tile.is-empty .tile__t { color: var(--muted); font-weight: 700; }
-.tile.is-close { border-color: var(--gold); }
-.tile.is-close .tile__ico { color: var(--gold); }
-.tile.is-ready { border-color: var(--accent); background: var(--accent-soft); }
-[data-theme="dark"] .tile.is-ready { background: var(--surface-2); }
-.tile.is-ready .tile__ico { color: var(--accent); }
-.tile.is-ready .tile__bar i { background: var(--accent); }
-.tile.is-done .tile__ico { color: var(--gold); }
-
 /* ---- the one thing allowed out of the grid ---- */
 
 .ready {
@@ -3180,3 +3123,213 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
 .toffer__tier b { font-size: 1.1rem; color: var(--m, var(--muted)); line-height: 1; }
 .trec__head .metal--bronze, .trec__head .metal--silver, .trec__head .metal--gold { color: inherit; }
 .trec__head b { color: var(--m, var(--muted)); }
+
+/* ====================================================================== */
+/* The Ascent: board and map.                                             */
+/* ====================================================================== */
+
+.vswitch {
+  display: flex; gap: 4px; padding: 4px; margin: 12px 0;
+  border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border);
+}
+.vswitch__b {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 12px; border-radius: 999px; text-decoration: none;
+  font-size: .78rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted);
+}
+.vswitch__b.is-on { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(16,24,32,.06); }
+[data-theme="dark"] .vswitch__b.is-on { box-shadow: none; background: var(--surface-3); }
+
+/* ---- the standing order ---- */
+/* A banner, not a card: you already chose this and it applies to everything
+   underneath until you change it. */
+
+.order {
+  position: relative; overflow: hidden; display: block; width: 100%;
+  text-align: left; cursor: pointer; font: inherit; color: inherit;
+  padding: 13px 15px 13px 22px; margin-bottom: 10px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, var(--accent-soft), var(--surface));
+  border: 1px solid var(--accent);
+}
+[data-theme="dark"] .order { background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
+.order__ribbon {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+  background: var(--accent);
+}
+.order--none {
+  background: none; border-style: dashed; border-color: var(--border-str);
+}
+.order--none .order__ribbon { background: var(--border-str); }
+.order__k {
+  display: block; font-size: .6rem; letter-spacing: .18em; text-transform: uppercase;
+  font-weight: 850; color: var(--accent-edge);
+}
+[data-theme="dark"] .order__k { color: var(--accent); }
+.order--none .order__k { color: var(--muted); }
+.order__t { display: block; font-size: 1.05rem; font-weight: 750; letter-spacing: -.02em; margin-top: 2px; }
+.order--none .order__t { font-size: .82rem; font-weight: 600; color: var(--text-2); letter-spacing: 0; }
+.order__bar {
+  display: block; height: 5px; border-radius: 999px; background: var(--surface-3);
+  overflow: hidden; margin-top: 9px;
+}
+.order__bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.order__foot {
+  display: flex; align-items: center; gap: 8px; margin-top: 7px;
+  font-size: .74rem; font-weight: 700; color: var(--text-2);
+}
+.order__n { flex: none; font-variant-numeric: tabular-nums; font-weight: 850; }
+.order__bonus {
+  flex: none; padding: 2px 7px; border-radius: 999px;
+  background: var(--accent); color: #fff; font-size: .64rem; font-weight: 850;
+}
+
+/* ---- the trial board ---- */
+
+.bboard--trials { padding: 14px 12px 16px; }
+.bboard__empty {
+  margin: 4px; padding: 18px 14px; text-align: center;
+  font-size: .84rem; font-weight: 600; color: var(--muted); line-height: 1.55;
+}
+.pinwall { display: flex; flex-direction: column; gap: 11px; }
+
+.pin {
+  position: relative; display: block; width: 100%; text-align: left;
+  padding: 20px 14px 12px; cursor: pointer; font: inherit; color: inherit;
+  background: var(--bg); border: 1px solid var(--border);
+  border-top: 3px solid var(--m, var(--border-str));
+  border-radius: 3px;
+  transform: rotate(var(--tilt, 0deg));
+  box-shadow: 0 2px 6px rgba(16, 24, 32, .13);
+  transition: transform .14s var(--ease);
+}
+.pin:active { transform: rotate(0deg) translateY(1px); }
+.pin--live { cursor: default; transform: none; padding-bottom: 14px; }
+.pin__tack {
+  position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--m, var(--red));
+  box-shadow: 0 1px 2px rgba(0,0,0,.4), inset 0 -2px 3px rgba(0,0,0,.2);
+}
+.pin__tier {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+  font-weight: 850; color: var(--m, var(--muted));
+}
+.pin__tier b { font-size: .8rem; line-height: 1; }
+.pin__t {
+  display: block; font-size: 1.02rem; font-weight: 750;
+  letter-spacing: -.015em; margin-top: 4px;
+}
+.pin__d {
+  display: block; font-size: .8rem; font-weight: 600; color: var(--text-2);
+  line-height: 1.45; margin-top: 3px;
+}
+.pin__foot { display: flex; align-items: center; gap: 9px; margin-top: 9px; }
+.pin__xp {
+  font-size: .78rem; font-weight: 850; color: var(--gold-edge);
+  font-variant-numeric: tabular-nums;
+}
+[data-theme="dark"] .pin__xp { color: var(--gold); }
+.pin__won {
+  font-size: .64rem; font-weight: 850; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent-edge);
+}
+[data-theme="dark"] .pin__won { color: var(--accent); }
+
+.pin__meter { display: flex; align-items: center; gap: 10px; margin-top: 11px; }
+.pin__bar {
+  flex: 1; height: 7px; border-radius: 999px; background: var(--surface-3); overflow: hidden;
+}
+.pin__bar i { display: block; height: 100%; background: var(--m, var(--gold)); border-radius: 999px; }
+.pin__n {
+  flex: none; font-size: .8rem; font-weight: 850; font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+.pin__pace {
+  display: block; margin-top: 9px; font-size: .78rem; line-height: 1.5;
+  font-weight: 650; color: var(--text-2);
+  padding-left: 10px; border-left: 2px solid var(--border);
+}
+.pin__pace--ok { border-color: var(--accent); }
+.pin__pace--tight { border-color: var(--gold); }
+.pin__pace--won { border-color: var(--accent); color: var(--text); }
+.pin__do {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 10px;
+  padding: 6px 10px; border-radius: 999px; text-decoration: none;
+  background: var(--surface-2); border: 1px dashed var(--border-str);
+  font-size: .72rem; font-weight: 750; color: var(--text-2);
+}
+.pin__acts { display: block; margin-top: 12px; }
+
+/* ---- the map ---- */
+
+.road { position: relative; padding: 4px 0 30px; }
+.road__leg { position: relative; padding-bottom: 6px; }
+/* One line running the length of the road, behind everything. */
+.road__leg::before {
+  content: ""; position: absolute; left: 25px; top: 0; bottom: 0; width: 2px;
+  background: var(--border);
+}
+.road__leg:first-child::before { top: 26px; }
+.road__leg:last-child::before { bottom: 0; }
+.road__leg.is-passed::before { background: var(--accent); }
+
+.gatepost {
+  position: relative; display: flex; align-items: center; gap: 13px;
+  padding: 10px 0;
+}
+.gatepost__node {
+  position: relative; z-index: 1; flex: none;
+  width: 52px; height: 52px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface-2); color: var(--muted);
+  border: 2px solid var(--border);
+  box-shadow: 0 0 0 4px var(--bg);
+}
+.is-passed .gatepost__node {
+  background: var(--accent); color: #fff; border-color: var(--accent-edge);
+}
+.is-here .gatepost__node {
+  background: var(--gold); color: #4a3800; border-color: var(--gold-edge);
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--gold-soft);
+}
+[data-theme="dark"] .is-here .gatepost__node {
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px rgba(211,171,78,.18);
+}
+.gatepost__lv {
+  font-size: 1.3rem; font-weight: 900; letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+}
+.gatepost__body { flex: 1; min-width: 0; }
+.gatepost__name { font-size: 1rem; font-weight: 750; letter-spacing: -.015em; }
+.is-here .gatepost__name { font-size: 1.12rem; }
+.gatepost__mean { font-size: .74rem; font-weight: 600; color: var(--text-2); font-style: italic; }
+.gatepost__meta {
+  font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); margin-top: 3px;
+}
+.gatepost__go {
+  flex: none; appearance: none; cursor: pointer; font: inherit;
+  padding: 7px 13px; border-radius: 999px;
+  background: var(--gold); color: #4a3800; border: 0;
+  font-size: .76rem; font-weight: 850; font-variant-numeric: tabular-nums;
+}
+
+/* the chains sit inside the stretch you are currently walking */
+.road__chains {
+  margin: 4px 0 10px 25px; padding: 14px 0 0 22px;
+  border-left: 2px dashed var(--border);
+}
+.road__chains .pathnode { margin-bottom: 22px; }
+.road__chains .pathnode__offset { transform: none; }
+
+/* everything above where you stand is drawn, but quietly */
+.road__leg:not(.is-passed):not(.is-here) { opacity: .5; }
+
+.road__start {
+  display: inline-flex; align-items: center; gap: 7px; margin-left: 8px;
+  font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted);
+}

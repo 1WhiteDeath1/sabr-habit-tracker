@@ -12,7 +12,7 @@ import { activeTrial, offered, acceptTrial, abandonTrial, settleTrial,
          pace, paceLine, trialRecord, hasWon, timesWon } from '../core/trials.js';
 import { confetti } from '../ui/confetti.js';
 import { todaysMove } from '../core/links.js';
-import { nextGate, ascend as doAscend, ladder } from '../core/ascend.js';
+import { nextGate, ascend as doAscend, ladder, currentRank, ASCENSIONS } from '../core/ascend.js';
 import { playerLevel, rankFor } from '../core/game.js';
 import { mainBoard, claimMain, todaysOffers, sideStatus, acceptSide, completeSide,
          pursuit, setPursuit, isPursued, PURSUIT_BONUS } from '../core/quests.js';
@@ -28,19 +28,10 @@ import { refresh } from '../core/router.js';
 const OFFSETS = [0, -52, -80, -52, 0, 52, 80, 52];
 
 export const questsScreen = {
-  render() {
+  render(route) {
     const state = getState();
-    const board = mainBoard(state);
-    // The main line is free forever — it is the campaign, and locking it would
-    // lock the app. Side quests are the optional extra, so they are the part
-    // with a price on it.
-    const sideOn = isOwned('sidequests', state);
-    const offers = sideOn ? todaysOffers(state) : [];
-
-    // Anything sitting at 100% is the only part of the board with a verb, so it
-    // stays above the fold; the rest collapse. Fourteen chains you cannot act on
-    // is not a board, it is a wall.
-    const claimable = board.filter((row) => !row.done && !row.locked && row.progress.met);
+    const view = route.params[0] === 'map' ? 'map' : 'board';
+    const gate = nextGate(state);
 
     return h`
       <div class="screen">
@@ -49,7 +40,14 @@ export const questsScreen = {
         </header>
 
         ${raw(ascentHead(state))}
-        ${raw(objectiveBoard(state))}
+        ${raw(viewSwitch(view))}
+
+        ${view === 'map'
+          ? raw(roadMap(state))
+          : raw(h`
+            ${gate && gate.ready ? raw(readyBanner(gate)) : raw('')}
+            ${raw(standingOrder(state))}
+            ${raw(trialBoard(state))}`)}
       </div>`;
   },
 
@@ -58,8 +56,31 @@ export const questsScreen = {
     actions(root, {
       climb:   () => openClimbSheet(),
       seal:    () => openSealSheet(),
-      trial:   () => openTrialSheet(),
       pursuit: () => openPursuitSheet(),
+      taketrial: (el, ds) => {
+        acceptTrial(ds.id);
+        sfx('claim');
+        haptic([16, 40, 22]);
+        toast('Trial accepted', { icon: icon('flame'), tone: 'good' });
+        refresh();
+      },
+      settletrial: (el) => {
+        const res = settleTrial();
+        if (!res) return;
+        reportTrial(res, el);
+        refresh();
+      },
+      droptrial: async () => {
+        const ok = await confirmSheet({
+          title: 'Step away from this trial?',
+          message: 'It costs nothing and it is not recorded as a loss. You can take another whenever you want one.',
+          confirmLabel: 'Step away',
+        });
+        if (!ok) return;
+        abandonTrial();
+        haptic(10);
+        refresh();
+      },
       chains:  () => openChainsSheet(),
       ascend: (el) => {
         const res = doAscend();
@@ -181,133 +202,6 @@ function crestRing(pct, sealed) {
     </svg>`;
 }
 
-/**
- * One tile.
- *
- * Every tile is the same shape whatever it represents — glyph, label, one
- * headline, one meter — so the grid can be scanned in a single pass instead of
- * read four times. `pips` draws discrete state (seals lit, days won) where a
- * bar would be a worse lie about a small whole number.
- */
-function tile({ act, glyph, k, title, sub, pct, pips, tone = '', badge = '' }) {
-  return h`
-    <button class="tile ${raw(tone)}" data-act="${act}">
-      <span class="tile__top">
-        <span class="tile__ico">${icon(glyph, { size: 17 })}</span>
-        <span class="tile__k">${k}</span>
-        ${badge ? raw(h`<span class="tile__badge">${badge}</span>`) : raw('')}
-      </span>
-      <span class="tile__t">${title}</span>
-      ${sub ? raw(h`<span class="tile__s">${sub}</span>`) : raw('')}
-      ${pips
-        ? raw(h`<span class="tile__pips">${pips.map((on) => raw(`<i class="${on ? 'is-on' : ''}"></i>`))}</span>`)
-        : raw(h`<span class="tile__bar"><i style="width:${((pct || 0) * 100).toFixed(1)}%"></i></span>`)}
-    </button>`;
-}
-
-/** The four tiles, plus the one thing allowed to break out of the grid.
- *  Not `board`: the render scope already has one from mainBoard(). */
-function objectiveBoard(state) {
-  const gate = nextGate(state);
-  const p = pursuit(state);
-  const rec = activeTrial(state);
-  const chains = mainBoard(state);
-  const claimable = chains.filter((r) => !r.done && !r.locked && r.progress.met);
-  const running = chains.filter((r) => !r.done).length;
-
-  // Ready to ascend outranks everything else on this screen.
-  if (gate && gate.ready) {
-    return h`
-      ${raw(readyBanner(gate))}
-      <div class="tiles">
-        ${raw(trialTile(state, rec))}
-        ${raw(pursuitTile(p))}
-        ${raw(chainsTile(running, claimable.length))}
-      </div>`;
-  }
-
-  const seals = gate
-    ? [gate.xpReady, ...gate.reqs.map((r) => r.met)]
-    : null;
-
-  return h`
-    <div class="tiles">
-      ${raw(gate
-        ? tile({
-            act: 'seal', glyph: 'lock', k: 'The seal',
-            title: gate.name,
-            sub: `${seals.filter(Boolean).length} of ${seals.length} lit · level ${gate.level}`,
-            pips: seals,
-            tone: seals.filter(Boolean).length === seals.length - 1 ? 'is-close' : '',
-          })
-        : tile({ act: 'seal', glyph: 'trophy', k: 'Ranks', title: 'All broken',
-                 sub: 'Nothing above this', pct: 1, tone: 'is-done' }))}
-      ${raw(trialTile(state, rec))}
-      ${raw(pursuitTile(p))}
-      ${raw(chainsTile(running, claimable.length))}
-    </div>`;
-}
-
-function trialTile(state, rec) {
-  if (!rec) {
-    const pool = offered(state);
-    const rec2 = trialRecord(state);
-    return tile({
-      act: 'trial', glyph: 'flame', k: 'Trial',
-      title: pool.length ? 'None taken' : 'None available',
-      sub: pool.length
-        ? `${pool.length} on offer · ${rec2.won} won`
-        : 'Hold a habit one can measure',
-      pct: 0, tone: 'is-empty',
-    });
-  }
-  const spec = TRIAL_BY_ID[rec.id];
-  const q = pace(rec, state);
-  const tier = TIERS[spec.tier] || TIERS.standard;
-  // The tile carries the slack rather than the day count, because "you can
-  // still miss two" is the fact that decides whether a bad Tuesday ends this.
-  const sub = q.state === 'won' ? 'Held — claim it'
-    : q.state === 'over' ? 'Window closed'
-    : q.state === 'shortfall' ? `${q.p.raw} of ${q.p.target} · partial still live`
-    : q.state === 'tight' ? `${q.need} to go · every day counts`
-    : `${q.need} to go · can miss ${q.slack}`;
-  return tile({
-    act: 'trial', glyph: 'flame', k: tier.label,
-    title: spec.title,
-    sub,
-    pct: q.p.pct,
-    tone: q.state === 'won' ? 'is-ready' : (q.state === 'tight' || q.state === 'shortfall') ? 'is-close' : '',
-    badge: q.state === 'won' ? `+${spec.xp}` : '',
-  });
-}
-
-function pursuitTile(p) {
-  if (!p) {
-    return tile({
-      act: 'pursuit', glyph: 'target', k: 'Pushing on', title: 'Nothing chosen',
-      sub: 'Pick one for +50%', pct: 0, tone: 'is-empty',
-    });
-  }
-  return tile({
-    act: 'pursuit', glyph: 'target', k: 'Pushing on',
-    title: p.quest.chainTitle,
-    sub: `${p.progress.value} of ${p.progress.target} · ${p.quest.title}`,
-    pct: p.progress.pct,
-    tone: p.progress.met ? 'is-ready' : '',
-  });
-}
-
-function chainsTile(running, claimable) {
-  return tile({
-    act: 'chains', glyph: 'star', k: 'Chains',
-    title: claimable ? `${claimable} to claim` : `${running} running`,
-    sub: claimable ? 'Tap to collect' : 'Counting quietly',
-    pct: claimable ? 1 : 0.35,
-    tone: claimable ? 'is-ready' : '',
-    badge: claimable ? String(claimable) : '',
-  });
-}
-
 /** The seal breaking is the loudest thing this screen ever says. */
 function readyBanner(gate) {
   return h`
@@ -318,6 +212,214 @@ function readyBanner(gate) {
       <span class="ready__m">${gate.meaning}</span>
       <span class="ready__go">Ascend</span>
     </button>`;
+}
+
+/* ====================================================================== */
+/* The Ascent: a board and a map.                                         */
+/*                                                                        */
+/* Two views, because two different questions are being asked and neither  */
+/* answers the other. The board is "what can I take on right now" — a cork */
+/* wall with the trials pinned to it, the same guild-board language as     */
+/* Today, so a contract is visibly an offer rather than an order. The map  */
+/* is "where am I and how far does this go" — the whole road, drawn once,  */
+/* with the ranks as gates on it and a marker where you are standing.      */
+/*                                                                        */
+/* The pursuit is neither of those. It is a standing order, so it hangs    */
+/* above the board as a banner rather than sitting on it as a card: it is  */
+/* not something you are being offered, it is the thing you already said   */
+/* you were doing.                                                        */
+/* ====================================================================== */
+
+function viewSwitch(view) {
+  return h`
+    <div class="vswitch" role="tablist">
+      <a class="vswitch__b ${view === 'map' ? '' : 'is-on'}" href="#/quests" role="tab">
+        ${icon('calendar', { size: 14 })} Board
+      </a>
+      <a class="vswitch__b ${view === 'map' ? 'is-on' : ''}" href="#/quests/map" role="tab">
+        ${icon('map', { size: 14 })} Map
+      </a>
+    </div>`;
+}
+
+/* ------------------------------------------------------------- the banner */
+
+/**
+ * The standing order.
+ *
+ * A banner rather than a card. You are not being offered this — you already
+ * chose it, and it applies to everything underneath until you change it, which
+ * is what a banner means and what a card does not.
+ */
+function standingOrder(state) {
+  const p = pursuit(state);
+  if (!p) {
+    return h`
+      <button class="order order--none" data-act="pursuit">
+        <span class="order__ribbon" aria-hidden="true"></span>
+        <span class="order__k">No standing order</span>
+        <span class="order__t">Name one chain and its tiers pay half as much again</span>
+      </button>`;
+  }
+  const { quest, progress } = p;
+  const move = todaysMove(quest.goal.type, quest.goal, state);
+  return h`
+    <button class="order" data-act="pursuit">
+      <span class="order__ribbon" aria-hidden="true"></span>
+      <span class="order__k">Standing order</span>
+      <span class="order__t">${quest.chainTitle}</span>
+      <span class="order__bar"><i style="width:${(progress.pct * 100).toFixed(1)}%"></i></span>
+      <span class="order__foot">
+        <span class="grow">${move || quest.title}</span>
+        <span class="order__n">${progress.value}/${progress.target}</span>
+        <span class="order__bonus">+50%</span>
+      </span>
+    </button>`;
+}
+
+/* -------------------------------------------------------------- the board */
+
+/** One trial, pinned. */
+function trialPin(t, state, i) {
+  const tier = TIERS[t.tier];
+  const won = timesWon(t.id, state);
+  const tilt = ((t.id.charCodeAt(0) + i * 5) % 5) - 2;
+  return h`
+    <button class="pin metal--${raw(tier.metal)}" style="--tilt:${tilt}deg"
+            data-act="taketrial" data-id="${t.id}">
+      <span class="pin__tack" aria-hidden="true"></span>
+      <span class="pin__tier"><b aria-hidden="true">◆</b>${tier.label} · ${tier.days}d</span>
+      <span class="pin__t">${t.title}</span>
+      <span class="pin__d">${t.desc}</span>
+      <span class="pin__foot">
+        <span class="pin__xp">+${t.xp}</span>
+        ${won ? raw(h`<span class="pin__won">won ${won}×</span>`) : raw('')}
+      </span>
+    </button>`;
+}
+
+/** The trial you are running, pinned alone and larger. */
+function runningPin(state, rec) {
+  const spec = TRIAL_BY_ID[rec.id];
+  const tier = TIERS[spec.tier];
+  const q = pace(rec, state);
+  const move = todaysMove(spec.metric, spec.args || {}, state);
+
+  return h`
+    <div class="pin pin--live metal--${raw(tier.metal)}" style="--tilt:0deg">
+      <span class="pin__tack" aria-hidden="true"></span>
+      <span class="pin__tier"><b aria-hidden="true">◆</b>${tier.label} · ${tier.days}d</span>
+      <span class="pin__t">${spec.title}</span>
+      <span class="pin__d">${spec.desc}</span>
+
+      <span class="pin__meter">
+        <span class="pin__bar"><i style="width:${(q.p.pct * 100).toFixed(1)}%"></i></span>
+        <span class="pin__n">${q.p.raw}/${q.p.target}</span>
+      </span>
+      <span class="pin__pace pin__pace--${raw(q.state)}">${paceLine(rec, state)}</span>
+      ${move && q.state !== 'won' && q.state !== 'over'
+        ? raw(h`<a class="pin__do" href="#/today">${icon('pointer', { size: 12 })} ${move}</a>`)
+        : raw('')}
+
+      <span class="pin__acts">
+        ${q.state === 'won' || q.state === 'over'
+          ? raw(h`<button class="btn ${q.state === 'won' ? 'btn--primary' : 'btn--ghost'} btn--sm btn--block"
+                data-act="settletrial">${q.state === 'won' ? `Claim +${spec.xp} XP` : 'Close it out'}</button>`)
+          : raw(h`<button class="btn btn--ghost btn--sm btn--block" data-act="droptrial">Step away</button>`)}
+      </span>
+    </div>`;
+}
+
+function trialBoard(state) {
+  const rec = activeTrial(state);
+  const record = trialRecord(state);
+  const pool = rec ? [] : offered(state);
+
+  return h`
+    <div class="bboard bboard--trials">
+      <div class="bboard__head">
+        <span class="bboard__title">Trials</span>
+        <span class="bboard__sub">${record.won} won · ${record.xp.toLocaleString()} XP</span>
+      </div>
+
+      ${rec ? raw(runningPin(state, rec)) : pool.length
+        ? raw(h`<div class="pinwall">${pool.map((t, i) => raw(trialPin(t, state, i)))}</div>`)
+        : raw(h`<p class="bboard__empty">
+            Nothing posted. Trials appear once you hold habits one can measure.
+          </p>`)}
+
+      ${record.attempted ? raw(trialRecordBlock(record)) : raw('')}
+    </div>`;
+}
+
+/* ---------------------------------------------------------------- the map */
+
+/**
+ * The whole road, drawn once.
+ *
+ * Rank gates are the large nodes; between them sit the chains that count
+ * toward the next one. Your marker goes where you actually are, and everything
+ * above it is drawn but dimmed — the point of a map is that you can see how
+ * far it goes, which a list of the next three things cannot do.
+ */
+function roadMap(state) {
+  const lv = playerLevel(state);
+  const rank = currentRank(state);
+  const rows = ladder(state);
+  const chains = mainBoard(state);
+
+  return h`
+    <div class="road">
+      ${rows.slice().reverse().map((r) => {
+        // The measured gate for the rank you are on, the raw entry for the
+        // ones ahead: only nextGate() carries counts, and the others are
+        // just names and a level until you get there.
+        const here = r.index === rank;
+        const passed = r.index < rank;
+        // The measured gate for the rank you are on, the raw entry for the ones
+        // ahead: only nextGate() carries counts, and the rest are just a name
+        // and a level until you reach them.
+        const spec = ASCENSIONS.find((a) => a.rank === r.index);
+        const gate = here ? nextGate(state) : spec;
+        // The chains that belong to this stretch: unfinished ones sit with the
+        // rank you are on, finished ones with the rank you were on when they
+        // closed. Approximate on purpose — the map is a sense of distance, not
+        // an audit.
+        const mine = here ? chains.filter((c) => !c.done && !c.locked).slice(0, 4) : [];
+        return raw(h`
+          <div class="road__leg ${passed ? 'is-passed' : ''} ${here ? 'is-here' : ''}">
+            <div class="gatepost">
+              <div class="gatepost__node">
+                ${passed ? raw(icon('check', { size: 20 }))
+                  : here ? raw(h`<span class="gatepost__lv">${lv.level}</span>`)
+                  : raw(icon('lock', { size: 17 }))}
+              </div>
+              <div class="gatepost__body">
+                <div class="gatepost__name">${r.name}</div>
+                <div class="gatepost__mean">${r.meaning}</div>
+                <div class="gatepost__meta">
+                  ${passed ? raw('Passed')
+                    : here ? raw(h`Levels ${r.from}–${r.to}${lv.capped ? ' · sealed' : ''}`)
+                    : spec ? raw(h`Seal at level ${spec.level}`) : raw(h`Levels ${r.from}–${r.to}`)}
+                </div>
+              </div>
+              ${here && gate ? raw(h`
+                <button class="gatepost__go" data-act="seal">
+                  ${gate.done + (gate.xpReady ? 1 : 0)}/${gate.reqs.length + 1}
+                </button>`) : raw('')}
+            </div>
+
+            ${mine.length ? raw(h`
+              <div class="road__chains">
+                ${mine.map((c, i) => raw(pathNode(c, chains.indexOf(c), c.progress.met)))}
+              </div>`) : raw('')}
+          </div>`);
+      })}
+
+      <div class="road__start">
+        ${icon('sprout', { size: 15 })} Where you began
+      </div>
+    </div>`;
 }
 
 /* ---------------------------------------------------------------- sheets */
