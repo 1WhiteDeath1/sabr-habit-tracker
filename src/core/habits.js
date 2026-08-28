@@ -54,6 +54,7 @@ export function setStatus(habitId, key, status, { tier = 'full', note = '' } = {
 
   const existing = statusOf(state, key, habitId);
   const clearing = existing === status;
+  const prior = state.logs[key]?.[habitId] || null;
 
   mutate((s) => {
     if (!s.logs[key]) s.logs[key] = {};
@@ -62,11 +63,20 @@ export function setStatus(habitId, key, status, { tier = 'full', note = '' } = {
     if (Object.keys(s.logs[key]).length === 0) delete s.logs[key];
   });
 
-  // XP is granted once, on the transition into a completed state. A deliberate
-  // undo later does NOT claw it back — punishing that teaches you to lie to
-  // your own tracker. A misclick is a different thing, and `undoTick` below
-  // handles it; the amount is recorded on the entry so the reversal can be
-  // exact rather than a guess at what the combo happened to be at the time.
+  // Un-ticking gives back exactly what the tick paid.
+  //
+  // This used to keep the XP, on the reasoning that punishing an undo teaches
+  // you to lie to your own tracker. That reasoning was about not deducting
+  // EXTRA, and it was never a licence for the row and the ledger to disagree —
+  // the day showed the habit undone while you had been paid for it. It was
+  // also an unlimited exploit: `existing` is falsy again after a clear, so
+  // tick, un-tick, tick paid every single time. Ten cycles farmed 240 XP.
+  //
+  // Voiding a transaction is not a penalty. Nothing you actually did is ever
+  // taken off you, because a cleared day is a day you are saying you did not
+  // do.
+  if (clearing && prior) refundEntry(prior);
+
   if (!clearing && (status === STATUS.DONE || status === STATUS.PARTIAL) && !existing) {
     // Paid by the habit's rank rather than a flat rate — see payoutFor().
     const pay = payoutFor(habit.difficulty);
@@ -83,41 +93,45 @@ export function setStatus(habitId, key, status, { tier = 'full', note = '' } = {
   return clearing ? null : status;
 }
 
-/** How long a tick stays a misclick rather than a decision. */
-export const UNDO_MS = 12000;
+/**
+ * Give back exactly what one log entry paid, from the pot and from the
+ * attribute it was filed under.
+ *
+ * The attribute matters: leaving it behind would keep a ghost on the radar on
+ * Me, which is drawn straight from attrXp.
+ */
+function refundEntry(entry) {
+  const paid = Number(entry && entry.xp) || 0;
+  if (!paid) return 0;
+  mutate((s) => {
+    s.game.xp = Math.max(0, s.game.xp - paid);
+    const a = entry.attr;
+    if (a && a in s.game.attrXp) s.game.attrXp[a] = Math.max(0, s.game.attrXp[a] - paid);
+    // The level derives from xp and follows on its own, but lastLevel is
+    // stored — leaving it high would swallow the next real level-up.
+    s.game.lastLevel = playerLevel(s).level;
+  });
+  return paid;
+}
 
 /**
- * Reverse a tick that should never have happened.
+ * Reverse a tick from the toast.
  *
- * Distinct from tapping the circle again, which clears the day but keeps the
- * XP. This is for the case where your thumb hit the wrong row: inside a short
- * window the XP was never earned, so it is taken back exactly — including from
- * the attribute it was filed under, or the radar on Me keeps a ghost of it.
- *
- * Outside the window it degrades to an ordinary clear and the XP stays, which
- * preserves the rule that actually matters: nothing you really did can be
- * taken off you later.
+ * Identical in effect to tapping the circle again — both clear the day and
+ * both give back what it paid. This exists because reaching the row you just
+ * mis-tapped is harder than reaching a button that is already on screen, not
+ * because it does anything different.
  */
 export function undoTick(habitId, key) {
   const state = getState();
   const entry = state.logs[key]?.[habitId];
   if (!entry) return false;
-  const fresh = Date.now() - (entry.at || 0) <= UNDO_MS;
-  const paid = fresh ? Number(entry.xp) || 0 : 0;
 
   mutate((s) => {
     delete s.logs[key][habitId];
     if (Object.keys(s.logs[key]).length === 0) delete s.logs[key];
-    if (paid) {
-      s.game.xp = Math.max(0, s.game.xp - paid);
-      const a = entry.attr;
-      if (a && a in s.game.attrXp) s.game.attrXp[a] = Math.max(0, s.game.attrXp[a] - paid);
-      // The level derives from xp and follows on its own, but lastLevel is
-      // stored — leaving it high would swallow the next real level-up.
-      s.game.lastLevel = playerLevel(s).level;
-    }
   });
-  return { undone: true, refunded: paid };
+  return { undone: true, refunded: refundEntry(entry) };
 }
 
 /* --------------------------------------------------------------- streaks */
