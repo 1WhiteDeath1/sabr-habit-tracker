@@ -3103,3 +3103,43 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
   margin: 13px 0 0; font-size: .76rem; line-height: 1.55;
   font-weight: 600; color: var(--muted);
 }
+
+/* ---- the collection, always on the page ---- */
+
+.coll {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  padding: 13px 15px; border-radius: var(--r); margin-bottom: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  font: inherit; color: inherit;
+}
+.coll__head { display: flex; align-items: baseline; gap: 10px; }
+.coll__k {
+  font-size: .68rem; letter-spacing: .14em; text-transform: uppercase;
+  font-weight: 850; color: var(--muted);
+}
+.coll__n {
+  margin-left: auto; font-size: .8rem; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.coll__bar {
+  display: flex; height: 8px; border-radius: 999px; overflow: hidden;
+  background: var(--surface-3); margin-top: 10px;
+}
+.coll__bar i { display: block; height: 100%; }
+
+/* Four states, four weights of the same idea: yours, reachable, saving for,
+   and behind a rank no amount of XP will open. */
+.coll--kept   { background: var(--accent); }
+.coll--open   { background: var(--gold); }
+.coll--short  { background: var(--border-str); }
+.coll--sealed { background: repeating-linear-gradient(45deg, var(--surface-3) 0 3px, var(--border) 3px 6px); }
+
+.coll__keys {
+  display: flex; flex-wrap: wrap; gap: 6px 13px; margin-top: 10px;
+}
+.collkey {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .7rem; font-weight: 750; color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.collkey i { width: 9px; height: 9px; border-radius: 3px; flex: none; }

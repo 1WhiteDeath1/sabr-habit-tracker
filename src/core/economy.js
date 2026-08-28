@@ -25,6 +25,7 @@
 
 import { getState, mutate } from './store.js';
 import { playerLevel } from './game.js';
+import { LIBRARY } from '../data/library.js';
 
 /**
  * Five tiers. The prices are superlinear on purpose — a severe habit costs more
@@ -62,6 +63,50 @@ export const DIFFICULTY = {
   5: { id: 5, label: 'Diamond',  metal: 'diamond',  emoji: '\u{1F48E}', cost: 260, minLevel: 9,
        blurb: 'The kind most people quit. Take one at a time.' },
 };
+
+/**
+ * Where every habit in the library stands with you.
+ *
+ * Four states, and they are genuinely different things rather than degrees of
+ * one thing: kept is yours, open is affordable now, short is a saving target,
+ * and sealed is a rank you have not reached, which no amount of XP will fix.
+ * Collapsing the last two into "unavailable" would hide the only distinction
+ * that tells you whether waiting or working is what is required.
+ */
+export function collection(state = getState()) {
+  const level = playerLevel(state).level;
+  const balance = wallet(state).balance;
+  const kept = new Set(state.habits.filter((x) => !x.archived).map((x) => x.title));
+
+  const tiers = DIFFICULTY_ORDER.map((t) => {
+    const d = DIFFICULTY[t];
+    const items = LIBRARY.filter((i) => difficultyOf(i) === t);
+    const open = level >= d.minLevel;
+    const mine = items.filter((i) => kept.has(i.title)).length;
+    const rest = items.filter((i) => !kept.has(i.title));
+    return {
+      ...d,
+      total: items.length,
+      kept: mine,
+      open: open ? rest.filter(() => balance >= d.cost).length : 0,
+      short: open ? rest.filter(() => balance < d.cost).length : 0,
+      sealed: open ? 0 : rest.length,
+      unlocked: open,
+    };
+  });
+
+  const sum = (k) => tiers.reduce((n, t) => n + t[k], 0);
+  return {
+    tiers,
+    total: LIBRARY.length,
+    kept: sum('kept'),
+    open: sum('open'),
+    short: sum('short'),
+    sealed: sum('sealed'),
+    /** The next rank that would open something, or null if all are open. */
+    nextTier: tiers.find((t) => !t.unlocked) || null,
+  };
+}
 
 /** Is this rank open at this level yet? */
 /**

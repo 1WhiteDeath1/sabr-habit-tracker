@@ -3,7 +3,7 @@
 
 import { h, raw, actions, haptic, toast, sheet, confirmSheet, qaRow } from '../ui/dom.js';
 import { slotStatus, MAX_SLOTS } from '../core/comeback.js';
-import { DIFFICULTY, DIFFICULTY_ORDER, wallet, priceTag, difficultyOf, costOf } from '../core/economy.js';
+import { DIFFICULTY, DIFFICULTY_ORDER, wallet, priceTag, difficultyOf, costOf, collection } from '../core/economy.js';
 import { playerLevel } from '../core/game.js';
 import { STAKE_KINDS, describeStake, accrue, settle, startStake, stopStake } from '../core/stake.js';
 import { isOwned } from '../core/unlocks.js';
@@ -45,6 +45,41 @@ export const habitsScreen = {
  * replacing one you stopped doing — the game should pay for keeping, not for
  * collecting.
  */
+/**
+ * The collection, always on the page.
+ *
+ * The gallery already shows every habit and its state, but only once you go
+ * looking. This is the standing answer to "what do I have and what is left",
+ * on the screen you are on anyway: one bar segmented into the four states, and
+ * the counts underneath.
+ */
+function collectionStrip(state) {
+  const c = collection(state);
+  const pct = (n) => (c.total ? (n / c.total) * 100 : 0).toFixed(2) + '%';
+
+  return h`
+    <button class="coll" data-act="library">
+      <span class="coll__head">
+        <span class="coll__k">The library</span>
+        <span class="coll__n">${c.kept} of ${c.total} kept</span>
+      </span>
+
+      <span class="coll__bar">
+        <i class="coll--kept"   style="width:${raw(pct(c.kept))}"></i>
+        <i class="coll--open"   style="width:${raw(pct(c.open))}"></i>
+        <i class="coll--short"  style="width:${raw(pct(c.short))}"></i>
+        <i class="coll--sealed" style="width:${raw(pct(c.sealed))}"></i>
+      </span>
+
+      <span class="coll__keys">
+        <span class="collkey"><i class="coll--kept"></i>${c.kept} kept</span>
+        <span class="collkey"><i class="coll--open"></i>${c.open} affordable</span>
+        <span class="collkey"><i class="coll--short"></i>${c.short} saving for</span>
+        <span class="collkey"><i class="coll--sealed"></i>${c.sealed} sealed${c.nextTier ? ` \u00b7 lv ${c.nextTier.minLevel}` : ''}</span>
+      </span>
+    </button>`;
+}
+
 function slotCard(state) {
   const st = slotStatus(state);
   const w = wallet(state);
@@ -163,6 +198,7 @@ function renderList() {
       </header>
 
       ${raw(slotCard(state))}
+      ${raw(collectionStrip(state))}
       ${raw(stakeCard(state))}
 
       <div class="row" style="gap:8px;margin-bottom:6px">
@@ -357,6 +393,7 @@ function renderGallery(filter) {
         <span class="gallerybar__k">${w.balance.toLocaleString()} XP</span>
         <span class="gallerybar__s">${slots.used} of ${slots.total} slots used</span>
       </div>
+      ${raw(collectionStrip(state))}
 
       <div class="chiprow">
         ${packs.map((p) => raw(h`
