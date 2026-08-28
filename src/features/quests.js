@@ -10,6 +10,7 @@ import { getState } from '../core/store.js';
 import { activeTrial, offered, acceptTrial, abandonTrial, settleTrial,
          trialProgress, daysLeft, isExpired, TRIAL_BY_ID } from '../core/trials.js';
 import { confetti } from '../ui/confetti.js';
+import { todaysMove } from '../core/links.js';
 import { nextGate, ascend as doAscend, ladder } from '../core/ascend.js';
 import { playerLevel, rankFor } from '../core/game.js';
 import { mainBoard, claimMain, todaysOffers, sideStatus, acceptSide, completeSide,
@@ -212,6 +213,8 @@ function trialCard(state) {
               <span class="grow">
                 <span class="trialopt__t">${t.title}</span>
                 <span class="trialopt__d">${t.desc}</span>
+                ${raw((() => { const m = todaysMove(t.metric, t.args || {}, state);
+                  return m ? h`<span class="trialopt__on">${m}</span>` : ''; })())}
               </span>
               <span class="pricepill">+${t.xp}</span>
             </button>`))}
@@ -222,6 +225,9 @@ function trialCard(state) {
   const spec = TRIAL_BY_ID[rec.id];
   const p = trialProgress(rec, state);
   const left = daysLeft(rec);
+  // Name the habit rather than the metric: "Fajr on time" is actionable,
+  // "habitDays where the title contains fajr" is not.
+  const move = todaysMove(spec.metric, spec.args || {}, state);
   const over = isExpired(rec);
   const won = p.met;
 
@@ -242,7 +248,11 @@ function trialCard(state) {
       ${won || over
         ? raw(h`<button class="btn ${won ? 'btn--primary' : 'btn--ghost'} btn--block" data-act="settletrial"
               style="margin-top:11px">${won ? `Claim +${spec.xp} XP` : 'Close it out'}</button>`)
-        : raw(h`<p class="trial__note">${spec.note}</p>
+        : raw(h`${move ? raw(h`
+            <a class="doneon" href="#/today">
+              ${icon('pointer', { size: 13 })}<span class="grow">${move}</span><span>on Today</span>
+            </a>`) : raw('')}
+          <p class="trial__note">${spec.note}</p>
             <button class="btn btn--ghost btn--sm btn--block" data-act="droptrial"
                     style="margin-top:9px">Step away from it</button>`)}
     </div>`;
@@ -273,6 +283,7 @@ function pursuitCard(state) {
   }
 
   const { quest, progress } = p;
+  const move = todaysMove(quest.goal.type, quest.goal, state);
   return h`
     <div class="card pursuit">
       <div class="row-between">
@@ -285,6 +296,10 @@ function pursuitCard(state) {
         <div class="pursuit__bar"><i style="width:${(progress.pct * 100).toFixed(1)}%"></i></div>
         <span class="pursuit__n">${progress.value} / ${progress.target}</span>
       </div>
+      ${move ? raw(h`
+        <a class="doneon" href="#/today">
+          ${icon('pointer', { size: 13 })}<span class="grow">${move}</span><span>on Today</span>
+        </a>`) : raw('')}
       <div class="pursuit__foot">
         ${icon('bolt', { size: 14 })}
         <span class="grow">Tiers on this chain pay +50% while it is chosen</span>

@@ -10,6 +10,7 @@ import { DIFFICULTY, payoutFor } from '../core/economy.js';
 import { streakOf, statusOf, atRisk, weeklyRemaining } from '../core/habits.js';
 import { icon } from './icons.js';
 import { isEasy } from '../core/comeback.js';
+import { habitLinks } from '../core/links.js';
 import { prettyTime } from '../core/dates.js';
 import { RESEARCH } from '../data/research.js';
 import { themeOf } from '../data/quests.js';
@@ -67,7 +68,7 @@ export function attrStrip(state = getState()) {
  * chevron for editing. Both share the same title/meta block so the two screens
  * always describe a habit identically.
  */
-export function habitRow(habit, key, { variant = 'today', state = getState() } = {}) {
+export function habitRow(habit, key, { variant = 'today', state = getState(), camp = null } = {}) {
   const status = statusOf(state, key, habit.id);
   const streak = streakOf(habit, state, key);
   const risk = variant === 'today' && atRisk(habit, state, key);
@@ -84,6 +85,9 @@ export function habitRow(habit, key, { variant = 'today', state = getState() } =
   // list of tasks feels flatter than a set of them.
   const tier = DIFFICULTY[habit.difficulty] || DIFFICULTY[2];
   const worth = Math.round(payoutFor(habit.difficulty).full * comboMultiplier(streak));
+  // What this row is feeding, if anything. Only the caller that has already
+  // measured the campaign passes it; everywhere else the row stays plain.
+  const links = camp && variant === 'today' ? habitLinks(habit, camp) : [];
 
   const cls = [
     'habitrow',
@@ -119,6 +123,10 @@ export function habitRow(habit, key, { variant = 'today', state = getState() } =
           ? raw(`<span class="habitrow__te">${habit.emoji}</span>`) : raw('')}${habit.title}</span>
         ${variant === 'today' && status !== STATUS.DONE && status !== STATUS.SKIP
         ? raw(h`<span class="habitrow__worth">+${worth}</span>`) : raw('')}
+      ${links.length ? raw(h`<span class="habitrow__links">${links.map((l) => raw(h`
+        <span class="hlink hlink--${raw(l.kind)} ${l.urgent ? 'is-urgent' : ''}">
+          ${icon(l.kind === 'trial' ? 'flame' : 'target', { size: 11 })}${l.label}<i>${l.detail}</i>
+        </span>`))}</span>`) : raw('')}
       ${meta.length ? raw(h`<span class="habitrow__meta">${meta.map((m) => raw(
           typeof m === 'string'
             ? `<span>${esc(m)}</span>`

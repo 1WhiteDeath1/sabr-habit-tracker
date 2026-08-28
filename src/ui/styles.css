@@ -2692,3 +2692,78 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
   margin: 10px 0 0; font-size: .74rem; line-height: 1.55;
   font-weight: 600; color: var(--muted);
 }
+
+/* ====================================================================== */
+/* The join between Today and the Ascent.                                 */
+/* ====================================================================== */
+
+.camps { display: flex; flex-direction: column; gap: 7px; }
+
+.camp {
+  display: flex; align-items: center; gap: 11px;
+  padding: 11px 13px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: inherit; text-decoration: none;
+}
+.camp.is-urgent { border-color: var(--gold); }
+.camp.is-won { border-color: var(--accent); background: var(--accent-soft); }
+[data-theme="dark"] .camp.is-won { background: var(--surface-3); }
+
+.camp__ico { flex: none; color: var(--gold); display: grid; place-items: center; }
+.camp:nth-child(2) .camp__ico { color: var(--accent); }
+.camp__k {
+  display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+  font-weight: 800; color: var(--muted);
+}
+.camp__t { display: block; font-weight: 750; font-size: .88rem; margin-top: 1px; }
+.camp__do {
+  display: block; font-size: .74rem; font-weight: 650; color: var(--text-2);
+  margin-top: 2px; overflow-wrap: anywhere;
+}
+.camp__n {
+  flex: none; font-size: 1.05rem; font-weight: 850;
+  font-variant-numeric: tabular-nums; color: var(--text);
+}
+.camp__n i { font-style: normal; font-size: .74rem; font-weight: 700; color: var(--muted); }
+
+/* ---- what a habit row is feeding ---- */
+
+.habitrow__links { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.hlink {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: 999px;
+  font-size: .64rem; font-weight: 800; letter-spacing: .01em;
+  background: var(--surface-3); color: var(--text-2);
+  max-width: 100%; overflow-wrap: anywhere;
+}
+.hlink i {
+  font-style: normal; font-weight: 700; opacity: .75;
+  font-variant-numeric: tabular-nums;
+}
+.hlink--trial { background: var(--gold-soft); color: var(--gold-edge); }
+.hlink--pursuit { background: var(--accent-soft); color: var(--accent-edge); }
+[data-theme="dark"] .hlink--trial { background: var(--surface-3); color: var(--gold); }
+[data-theme="dark"] .hlink--pursuit { background: var(--surface-3); color: var(--accent); }
+.hlink.is-urgent { box-shadow: inset 0 0 0 1px currentColor; }
+.habitrow.is-done .habitrow__links, .habitrow.is-skip .habitrow__links { opacity: .45; }
+
+/* ---- the Ascent pointing back ---- */
+
+.doneon {
+  display: flex; align-items: center; gap: 7px; margin-top: 11px;
+  padding: 9px 12px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px dashed var(--border-str);
+  color: var(--text-2); text-decoration: none;
+  font-size: .78rem; font-weight: 750;
+}
+.doneon > span:last-child {
+  flex: none; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); font-weight: 800;
+}
+.doneon .ico { color: var(--accent); }
+
+.trialopt__on {
+  display: block; margin-top: 4px; font-size: .7rem; font-weight: 800;
+  color: var(--accent-edge);
+}
+[data-theme="dark"] .trialopt__on { color: var(--accent); }

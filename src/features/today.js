@@ -15,6 +15,7 @@ import { comboMultiplier } from '../core/game.js';
 import { isOwned } from '../core/unlocks.js';
 import { gateCard, gateMount } from '../ui/gate.js';
 import { LEAD_MINUTES } from '../core/notify.js';
+import { campaign, habitLinks, todaysMove } from '../core/links.js';
 import { recoveryStats } from '../core/recovery.js';
 import { habitRow, passageCard, dayRing, timeGroup, evidenceCard, attrColorFor, sideQuestCard } from '../ui/widgets.js';
 import { refresh, go } from '../core/router.js';
@@ -71,6 +72,9 @@ export const todayScreen = {
     const streak = streakState(state);
     const due = milestoneDue(state);
     const broke = pendingBreak(state);
+    // Measured once and passed down: a fifteen-habit day would otherwise
+    // walk the whole log fifteen times to draw the same two badges.
+    const camp = campaign(state, key);
     const passage = passageFor(now >= 20 * 60 ? 'night' : now < 11 * 60 ? 'morning' : 'stalling', key);
     const name = state.profile.name ? `, ${state.profile.name}` : '';
 
@@ -99,6 +103,7 @@ export const todayScreen = {
 
         <div class="stack">
           <div data-coach="ring">${raw(dayBanner(state, key, progress, win, streak))}</div>
+          ${raw(campaignStrip(camp))}
 
           ${state.recovery.enabled ? raw(h`
             <div class="row" style="gap:8px">
@@ -135,7 +140,7 @@ export const todayScreen = {
             action: 'library',
           })) : raw(groups.map((g) => h`
             ${raw(phaseMark(g.label, g.at, g.id === win.current))}
-            ${g.items.map((it) => raw(habitRow(it.habit, key, { state })))}
+            ${g.items.map((it) => raw(habitRow(it.habit, key, { state, camp })))}
           `).join(''))}
 
           ${later.length ? raw(h`
@@ -574,6 +579,50 @@ function phaseMark(label, minutes, isNow) {
 }
 
 /**
+ * What you are running, on the screen where you run it.
+ *
+ * The Ascent is where you take a trial and name a pursuit; this is where those
+ * are actually done. Without it the two screens describe the same numbers to
+ * each other and neither tells you what to tap.
+ */
+function campaignStrip(camp) {
+  const rows = [];
+
+  if (camp.trial) {
+    const { spec, progress, daysLeft: left } = camp.trial;
+    const move = todaysMove(spec.metric, spec.args || {});
+    rows.push(h`
+      <a class="camp ${progress.met ? 'is-won' : left <= 2 ? 'is-urgent' : ''}" href="#/quests">
+        <span class="camp__ico">${icon('flame', { size: 17 })}</span>
+        <span class="grow">
+          <span class="camp__k">Trial${progress.met ? ' · complete' : ` · ${left} day${left === 1 ? '' : 's'} left`}</span>
+          <span class="camp__t">${spec.title}</span>
+          ${move && !progress.met ? raw(h`<span class="camp__do">${move}</span>`) : raw('')}
+        </span>
+        <span class="camp__n">${progress.raw}<i>/${progress.target}</i></span>
+      </a>`);
+  }
+
+  if (camp.pursuit) {
+    const { quest, progress } = camp.pursuit;
+    const move = todaysMove(quest.goal.type, quest.goal);
+    rows.push(h`
+      <a class="camp" href="#/quests">
+        <span class="camp__ico">${icon('target', { size: 17 })}</span>
+        <span class="grow">
+          <span class="camp__k">Pushing on</span>
+          <span class="camp__t">${quest.chainTitle}</span>
+          ${move ? raw(h`<span class="camp__do">${move}</span>`) : raw('')}
+        </span>
+        <span class="camp__n">${progress.value}<i>/${progress.target}</i></span>
+      </a>`);
+  }
+
+  if (!rows.length) return '';
+  return h`<div class="camps">${rows.map((r) => raw(r))}</div>`;
+}
+
+/**
  * Putting a clock on a habit.
  *
  * Two buttons rather than a mode switch plus a save: "just today" and "every
@@ -744,8 +793,15 @@ function toggleHabit(id, el) {
         refresh();
       },
     };
+    // Say what the tick moved, not just that it happened. This is the moment
+    // the two screens are actually joined: a trial you accepted on the Ascent
+    // ticking over on the row that fed it.
+    const moved = habitLinks(habit, campaign(getState(), key))[0];
     if (streak > 1 && streak % 7 === 0) {
       toast(`${streak}-day streak on ${habit.title}`, { icon: icon('flame'), tone: 'good', ms: 5000, action: undo });
+    } else if (moved) {
+      toast(`${habit.title} · ${moved.label} ${moved.detail.split(' · ')[0]}`,
+        { icon: icon(moved.kind === 'trial' ? 'flame' : 'target'), tone: 'good', ms: 5200, action: undo });
     } else {
       toast(`${habit.title}`, { icon: icon('check'), tone: 'good', ms: 5000, action: undo });
     }
