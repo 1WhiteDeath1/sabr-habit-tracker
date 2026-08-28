@@ -111,8 +111,15 @@ for (const file of files) {
   const lines = code.split('\n');
   const missing = [];
   for (let i = 0; i < lines.length; i++) {
-    for (const m of lines[i].matchAll(/(^|[^.\w$])([a-zA-Z_$][\w$]*)\s*\(/g)) {
-      const nm = m[2];
+    // Lookahead, not a consuming prefix. The obvious pattern eats the
+    // character before the name, so in `raw(inner(x))` the match on `raw(`
+    // consumes the paren `inner` needed and the inner call is never seen.
+    // Every nested call in the codebase was invisible until this stopped
+    // consuming and started checking the preceding character itself.
+    for (const m of lines[i].matchAll(/[a-zA-Z_$][\w$]*(?=\s*\()/g)) {
+      const prev = m.index > 0 ? lines[i][m.index - 1] : '';
+      if (prev === '.' || /[\w$]/.test(prev)) continue;
+      const nm = m[0];
       if (declared.has(nm) || GLOBALS.has(nm)) continue;
       if (missing.some((x) => x[0] === nm)) continue;
       missing.push([nm, i + 1]);

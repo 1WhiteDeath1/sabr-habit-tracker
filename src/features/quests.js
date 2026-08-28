@@ -47,39 +47,26 @@ export const questsScreen = {
           <div class="eyebrow">The ascent</div>
         </header>
 
-        <div class="stack">
-          ${raw(ascentHead(state))}
-          ${raw(gateCardAscent(state))}
-          ${raw(pursuitCard(state))}
-          ${raw(trialCard(state))}
-        </div>
-
-        <div class="section-title"><span>The climb</span></div>
-        ${raw(ladderList(state))}
-
-        <div class="section-title"><span>Every chain</span>
-          <span class="muted" style="text-transform:none;letter-spacing:0">counting whether you look or not</span></div>
-        ${claimable.length ? raw(h`
-          <div class="path" style="margin-bottom:6px">
-            ${raw(claimable.map((row) => pathNode(row, board.indexOf(row), true)).join(''))}
-          </div>`) : raw('')}
-        <details class="card allchains">
-          <summary>
-            <span class="grow">${board.filter((r) => !r.done).length} chains running</span>
-            <i class="qa__mark" aria-hidden="true">?</i>
-          </summary>
-          <div class="path" style="margin-top:14px">
-            ${raw(board.filter((row) => !claimable.includes(row))
-              .map((row, i) => pathNode(row, i, false)).join(''))}
-          </div>
-        </details>
-
+        ${raw(ascentHead(state))}
+        ${raw(objectiveBoard(state))}
       </div>`;
   },
 
   mount(root) {
     gateMount(root);
     actions(root, {
+      climb:   () => openClimbSheet(),
+      seal:    () => openSealSheet(),
+      trial:   () => openTrialSheet(),
+      pursuit: () => openPursuitSheet(),
+      chains:  () => openChainsSheet(),
+      ascend: (el) => {
+        const res = doAscend();
+        if (!res) return;
+        celebrateAscension(res, el);
+        refresh();
+      },
+      qdetail: (el, ds) => openQuestDetail(ds.id),
       claim: (el, ds) => {
         const xp = claimMain(ds.id);
         if (!xp) return;
@@ -87,53 +74,6 @@ export const questsScreen = {
         haptic([18, 50, 25, 50, 40]);
         xpBurst(xp, el, 'var(--gold)');
         toast(`Quest complete · +${xp} XP`, { icon: icon('trophy'), tone: 'good' });
-        refresh();
-      },
-      qdetail: (el, ds) => openQuestDetail(ds.id),
-      pickpursuit: () => openPursuitSheet(),
-      ascend: (el) => {
-        const res = doAscend();
-        if (!res) return;
-        celebrateAscension(res, el);
-        refresh();
-      },
-      taketrial: (el, ds) => {
-        acceptTrial(ds.id);
-        sfx('claim'); haptic([16, 40, 22]);
-        toast('Trial accepted · seven days', { icon: icon('flame'), tone: 'good' });
-        refresh();
-      },
-      settletrial: (el) => {
-        const res = settleTrial();
-        if (!res) return;
-        if (res.outcome === 'won') {
-          sfx('levelup'); haptic([20, 50, 25, 50, 40]);
-          confetti({ count: 110, origin: el.getBoundingClientRect() });
-          xpBurst(res.xp, el, 'var(--gold)');
-          toast(`${res.spec.title} · +${res.xp} XP`, { icon: icon('trophy'), tone: 'good', ms: 3400 });
-        } else if (res.outcome === 'partial') {
-          sfx('claim'); haptic([14, 30, 20]);
-          xpBurst(res.xp, el, 'var(--blue)');
-          toast(`${res.value} of ${res.target} · +${res.xp} XP for the part you held`, { ms: 3600 });
-        } else {
-          haptic(10);
-          toast(`${res.value} of ${res.target}. Nothing lost — the days still count on your record.`, { ms: 3800 });
-        }
-        refresh();
-      },
-      droptrial: async () => {
-        const ok = await confirmSheet({
-          title: 'Step away from this trial?',
-          message: 'It costs nothing and it is not recorded as a loss. You can take another whenever you want one.',
-          confirmLabel: 'Step away',
-        });
-        if (!ok) return;
-        abandonTrial(); haptic(10); refresh();
-      },
-      accept: (el, ds) => { acceptSide(ds.id); haptic(10); refresh(); },
-      complete: (el, ds) => {
-        const xp = completeSide(ds.id);
-        if (xp) { sfx('claim'); haptic([12, 40, 18]); xpBurst(xp, el); toast('Side quest complete', { icon: icon('target'), tone: 'good' }); }
         refresh();
       },
     });
@@ -181,134 +121,359 @@ function pathNode(row, index, isNext) {
 }
 
 /* ====================================================================== */
-/* The board.                                                             */
+/* The Ascent, as a board of objectives.                                  */
 /*                                                                        */
-/* This screen used to open with a copy of the top of Me — the same level  */
-/* card, the same five attributes — and then list fourteen chains you      */
-/* could not act on. It read as a worse Me, because that is what it was.   */
+/* It was six full-width blocks stacked down the page, each one well      */
+/* written and the six together a wall. Every block explained itself in    */
+/* prose because it had the room to, and the screen ended up needing to be */
+/* read rather than seen.                                                 */
 /*                                                                        */
-/* It answers one question now, and it is the question nothing else in the */
-/* app was asking: what am I pushing on over the next couple of weeks?     */
-/* Today covers now, Habits covers forever, Me covers the past. This is    */
-/* the middle distance, and both halves of it have a verb — you choose a   */
-/* pursuit, and you accept a trial.                                        */
+/* The fix is the one Destiny's Director, Pokémon GO's Today view and the  */
+/* Genshin character screen all use: the surface carries STATE, the words  */
+/* live one tap deep. A status header, then four tiles of identical shape  */
+/* — glyph, name, a number, a meter. Four seconds to read the whole        */
+/* screen, and nothing lost, because every tile opens the full card that   */
+/* used to be sitting on the page.                                        */
+/*                                                                        */
+/* The one exception is deliberate. When a seal is ready to break, that    */
+/* leaves the grid and takes the full width, because a game that whispers  */
+/* its biggest moment is getting the emphasis exactly backwards.          */
 /* ====================================================================== */
 
-function trialCard(state) {
+/** The crest, compacted to a header. Tapping it opens the climb. */
+function ascentHead(state) {
+  const lv = playerLevel(state);
+  const r = rankFor(lv.level);
+  const gate = nextGate(state);
+  const pct = lv.capped ? 1 : lv.pct;
+
+  return h`
+    <button class="crestbar ${lv.capped ? 'is-sealed' : ''}" data-act="climb">
+      <span class="crestbar__halo" aria-hidden="true"></span>
+      <span class="crestbar__emblem">
+        ${raw(crestRing(pct, lv.capped))}
+        <span class="crestbar__lv">${lv.level}</span>
+        ${lv.capped ? raw(h`<span class="crestbar__lock">${icon('lock', { size: 11 })}</span>`) : raw('')}
+      </span>
+      <span class="crestbar__body">
+        <span class="crestbar__name">${r.name}</span>
+        <span class="crestbar__mean">${r.meaning}</span>
+        <span class="crestbar__line">
+          ${lv.capped
+            ? raw(h`<b>${lv.banked.toLocaleString()} XP</b> banked · ${lv.wouldBe - lv.level} waiting`)
+            : raw(h`${lv.need - lv.into} XP to ${lv.level + 1}${gate ? ` · seal at ${gate.level}` : ''}`)}
+        </span>
+      </span>
+      <span class="crestbar__chev">›</span>
+    </button>`;
+}
+
+function crestRing(pct, sealed) {
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  const off = c * (1 - Math.max(0, Math.min(1, pct)));
+  return `
+    <svg class="crestbar__ring" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="${r}" class="crestbar__track"/>
+      <circle cx="32" cy="32" r="${r}" class="crestbar__fill ${sealed ? 'is-sealed' : ''}"
+              stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+    </svg>`;
+}
+
+/**
+ * One tile.
+ *
+ * Every tile is the same shape whatever it represents — glyph, label, one
+ * headline, one meter — so the grid can be scanned in a single pass instead of
+ * read four times. `pips` draws discrete state (seals lit, days won) where a
+ * bar would be a worse lie about a small whole number.
+ */
+function tile({ act, glyph, k, title, sub, pct, pips, tone = '', badge = '' }) {
+  return h`
+    <button class="tile ${raw(tone)}" data-act="${act}">
+      <span class="tile__top">
+        <span class="tile__ico">${icon(glyph, { size: 17 })}</span>
+        <span class="tile__k">${k}</span>
+        ${badge ? raw(h`<span class="tile__badge">${badge}</span>`) : raw('')}
+      </span>
+      <span class="tile__t">${title}</span>
+      ${sub ? raw(h`<span class="tile__s">${sub}</span>`) : raw('')}
+      ${pips
+        ? raw(h`<span class="tile__pips">${pips.map((on) => raw(`<i class="${on ? 'is-on' : ''}"></i>`))}</span>`)
+        : raw(h`<span class="tile__bar"><i style="width:${((pct || 0) * 100).toFixed(1)}%"></i></span>`)}
+    </button>`;
+}
+
+/** The four tiles, plus the one thing allowed to break out of the grid.
+ *  Not `board`: the render scope already has one from mainBoard(). */
+function objectiveBoard(state) {
+  const gate = nextGate(state);
+  const p = pursuit(state);
+  const rec = activeTrial(state);
+  const chains = mainBoard(state);
+  const claimable = chains.filter((r) => !r.done && !r.locked && r.progress.met);
+  const running = chains.filter((r) => !r.done).length;
+
+  // Ready to ascend outranks everything else on this screen.
+  if (gate && gate.ready) {
+    return h`
+      ${raw(readyBanner(gate))}
+      <div class="tiles">
+        ${raw(trialTile(state, rec))}
+        ${raw(pursuitTile(p))}
+        ${raw(chainsTile(running, claimable.length))}
+      </div>`;
+  }
+
+  const seals = gate
+    ? [gate.xpReady, ...gate.reqs.map((r) => r.met)]
+    : null;
+
+  return h`
+    <div class="tiles">
+      ${raw(gate
+        ? tile({
+            act: 'seal', glyph: 'lock', k: 'The seal',
+            title: gate.name,
+            sub: `${seals.filter(Boolean).length} of ${seals.length} lit · level ${gate.level}`,
+            pips: seals,
+            tone: seals.filter(Boolean).length === seals.length - 1 ? 'is-close' : '',
+          })
+        : tile({ act: 'seal', glyph: 'trophy', k: 'Ranks', title: 'All broken',
+                 sub: 'Nothing above this', pct: 1, tone: 'is-done' }))}
+      ${raw(trialTile(state, rec))}
+      ${raw(pursuitTile(p))}
+      ${raw(chainsTile(running, claimable.length))}
+    </div>`;
+}
+
+function trialTile(state, rec) {
+  if (!rec) {
+    const n = offered(state).length;
+    return tile({
+      act: 'trial', glyph: 'flame', k: 'Trial', title: 'None taken',
+      sub: n ? `${n} on offer` : 'None available yet', pct: 0, tone: 'is-empty',
+    });
+  }
+  const spec = TRIAL_BY_ID[rec.id];
+  const pr = trialProgress(rec, state);
+  const left = daysLeft(rec);
+  return tile({
+    act: 'trial', glyph: 'flame', k: 'Trial',
+    title: spec.title,
+    sub: pr.met ? 'Complete — claim it' : `${pr.raw} of ${pr.target} · ${left}d left`,
+    pct: pr.pct,
+    tone: pr.met ? 'is-ready' : left <= 2 ? 'is-close' : '',
+    badge: pr.met ? `+${spec.xp}` : '',
+  });
+}
+
+function pursuitTile(p) {
+  if (!p) {
+    return tile({
+      act: 'pursuit', glyph: 'target', k: 'Pushing on', title: 'Nothing chosen',
+      sub: 'Pick one for +50%', pct: 0, tone: 'is-empty',
+    });
+  }
+  return tile({
+    act: 'pursuit', glyph: 'target', k: 'Pushing on',
+    title: p.quest.chainTitle,
+    sub: `${p.progress.value} of ${p.progress.target} · ${p.quest.title}`,
+    pct: p.progress.pct,
+    tone: p.progress.met ? 'is-ready' : '',
+  });
+}
+
+function chainsTile(running, claimable) {
+  return tile({
+    act: 'chains', glyph: 'star', k: 'Chains',
+    title: claimable ? `${claimable} to claim` : `${running} running`,
+    sub: claimable ? 'Tap to collect' : 'Counting quietly',
+    pct: claimable ? 1 : 0.35,
+    tone: claimable ? 'is-ready' : '',
+    badge: claimable ? String(claimable) : '',
+  });
+}
+
+/** The seal breaking is the loudest thing this screen ever says. */
+function readyBanner(gate) {
+  return h`
+    <button class="ready" data-act="ascend">
+      <span class="ready__arch" aria-hidden="true"></span>
+      <span class="ready__k">The seal is broken</span>
+      <span class="ready__t">${gate.name}</span>
+      <span class="ready__m">${gate.meaning}</span>
+      <span class="ready__go">Ascend</span>
+    </button>`;
+}
+
+/* ---------------------------------------------------------------- sheets */
+/* Everything that used to sit on the page, now one tap behind its tile.    */
+
+/** The gate, in full: the seals, what each needs, and the way through. */
+function openSealSheet() {
+  const state = getState();
+  const gate = nextGate(state);
+  if (!gate) {
+    sheet({ title: 'Muhsin', body: h`
+      <p class="prose" style="margin:0">Every seal broken. There is no rank above this one and
+      levels run on freely from here.</p>` });
+    return;
+  }
+
+  const seals = [
+    { label: `Reach level ${gate.level}`, have: Math.min(gate.xpHave, gate.level), n: gate.level,
+      met: gate.xpReady, glyph: 'bolt' },
+    ...gate.reqs.map((r) => ({
+      label: r.label, have: Math.min(r.have, r.n), n: r.n, met: r.met,
+      glyph: r.id === 'streak' ? 'flame' : r.id === 'trials' ? 'trophy'
+        : r.id === 'automatic' ? 'sprout' : 'star',
+    })),
+  ];
+
+  sheet({
+    title: `The seal at ${gate.level}`,
+    body: h`
+      <div class="stack">
+        <div class="sealhead">
+          <div class="sealhead__t">${gate.name}</div>
+          <div class="sealhead__m">${gate.meaning}</div>
+          <p class="sealhead__b">${gate.blurb}</p>
+        </div>
+        <div class="seals">
+          ${seals.map((s) => raw(h`
+            <div class="seal ${s.met ? 'is-lit' : ''}">
+              <div class="seal__disc">${icon(s.glyph, { size: 19 })}</div>
+              <div class="seal__n">${s.have}<span>/${s.n}</span></div>
+              <div class="seal__l">${s.label}</div>
+            </div>`))}
+        </div>
+        <p class="muted" style="margin:0;font-size:.8rem;line-height:1.55;font-weight:600">
+          Your level is held here until every seal is lit. Nothing is wasted meanwhile — XP keeps
+          banking, so breaking through releases the levels all at once.
+        </p>
+      </div>`,
+    footer: gate.ready
+      ? h`<button class="btn btn--primary btn--block" data-do="ascend">Ascend to ${gate.name}</button>`
+      : '',
+    onMount: (el, close) => {
+      el.querySelector('[data-do="ascend"]')?.addEventListener('click', () => {
+        const res = doAscend();
+        close();
+        if (res) celebrateAscension(res, null);
+        refresh();
+      });
+    },
+  });
+}
+
+/** The trial: what is running, or what is on offer. */
+function openTrialSheet() {
+  const state = getState();
   const rec = activeTrial(state);
 
   if (!rec) {
     const pool = offered(state).slice(0, 3);
-    if (!pool.length) return '';
-    return h`
-      <div class="card trialpick">
-        <div class="trialpick__k">Take a trial</div>
-        <p class="trialpick__b">
-          Seven days, one at a time, and you can decline. It is the only thing here
-          you are able to fail — which is the only reason finishing one means anything.
-        </p>
-        <div class="stack-sm" style="margin-top:12px">
-          ${pool.map((t) => raw(h`
-            <button class="trialopt" data-act="taketrial" data-id="${t.id}">
-              <span class="grow">
-                <span class="trialopt__t">${t.title}</span>
-                <span class="trialopt__d">${t.desc}</span>
-                ${raw((() => { const m = todaysMove(t.metric, t.args || {}, state);
-                  return m ? h`<span class="trialopt__on">${m}</span>` : ''; })())}
-              </span>
-              <span class="pricepill">+${t.xp}</span>
-            </button>`))}
-        </div>
-      </div>`;
+    sheet({
+      title: 'Take a trial',
+      body: h`
+        <div class="stack">
+          <p class="prose" style="margin:0">
+            Seven days, one at a time, and you can decline. It is the only thing in this app you
+            are able to fail — which is the only reason finishing one means anything. Stepping
+            away costs nothing and is not recorded as a loss.
+          </p>
+          ${pool.length ? raw(h`<div class="stack-sm">
+            ${pool.map((t) => raw(h`
+              <button class="trialopt" data-take="${t.id}">
+                <span class="grow">
+                  <span class="trialopt__t">${t.title}</span>
+                  <span class="trialopt__d">${t.desc}</span>
+                  ${raw((() => { const m = todaysMove(t.metric, t.args || {}, state);
+                    return m ? h`<span class="trialopt__on">${m}</span>` : ''; })())}
+                </span>
+                <span class="pricepill">+${t.xp}</span>
+              </button>`))}
+          </div>`) : raw(h`<p class="muted" style="margin:0">
+            Nothing on offer yet — trials appear once you hold habits they can measure.</p>`)}
+        </div>`,
+      onMount: (el, close) => {
+        el.addEventListener('click', (ev) => {
+          const b = ev.target.closest('[data-take]');
+          if (!b) return;
+          acceptTrial(b.dataset.take);
+          sfx('claim'); haptic([16, 40, 22]);
+          toast('Trial accepted · seven days', { icon: icon('flame'), tone: 'good' });
+          close(); refresh();
+        });
+      },
+    });
+    return;
   }
 
   const spec = TRIAL_BY_ID[rec.id];
   const p = trialProgress(rec, state);
   const left = daysLeft(rec);
-  // Name the habit rather than the metric: "Fajr on time" is actionable,
-  // "habitDays where the title contains fajr" is not.
-  const move = todaysMove(spec.metric, spec.args || {}, state);
   const over = isExpired(rec);
-  const won = p.met;
+  const move = todaysMove(spec.metric, spec.args || {}, state);
 
-  return h`
-    <div class="card trial ${won ? 'is-won' : over ? 'is-over' : ''}">
-      <div class="row-between">
-        <span class="trial__k">${won ? 'Trial complete' : over ? 'The week is up' : 'Trial running'}</span>
-        <span class="trial__left">${won || over ? '' : `${left} day${left === 1 ? '' : 's'} left`}</span>
-      </div>
-      <div class="trial__t">${spec.title}</div>
-      <div class="trial__d">${spec.desc}</div>
-
-      <div class="trial__meter">
-        <div class="trial__bar"><i style="width:${(p.pct * 100).toFixed(1)}%"></i></div>
-        <span class="trial__n">${p.raw} / ${p.target}</span>
-      </div>
-
-      ${won || over
-        ? raw(h`<button class="btn ${won ? 'btn--primary' : 'btn--ghost'} btn--block" data-act="settletrial"
-              style="margin-top:11px">${won ? `Claim +${spec.xp} XP` : 'Close it out'}</button>`)
-        : raw(h`${move ? raw(h`
-            <a class="doneon" href="#/today">
-              ${icon('pointer', { size: 13 })}<span class="grow">${move}</span><span>on Today</span>
-            </a>`) : raw('')}
-          <p class="trial__note">${spec.note}</p>
-            <button class="btn btn--ghost btn--sm btn--block" data-act="droptrial"
-                    style="margin-top:9px">Step away from it</button>`)}
-    </div>`;
+  sheet({
+    title: spec.title,
+    body: h`
+      <div class="stack">
+        <p class="prose" style="margin:0">${spec.desc}</p>
+        <div class="trial__meter">
+          <div class="trial__bar"><i style="width:${(p.pct * 100).toFixed(1)}%"></i></div>
+          <span class="trial__n">${p.raw} / ${p.target}</span>
+        </div>
+        <div class="pdetail__terms">
+          <div class="row-between"><span>Reward</span><span class="pricepill">+${spec.xp} XP</span></div>
+          <div class="row-between"><span>Time left</span><span>${p.met ? 'Done' : over ? 'Expired' : `${left} day${left === 1 ? '' : 's'}`}</span></div>
+          <div class="row-between"><span>If you miss it</span><span>Quarter reward past halfway</span></div>
+        </div>
+        ${move ? raw(h`<a class="doneon" href="#/today">
+          ${icon('pointer', { size: 13 })}<span class="grow">${move}</span><span>on Today</span></a>`) : raw('')}
+        <p class="muted" style="margin:0;font-size:.8rem;line-height:1.55;font-weight:600">${spec.note}</p>
+      </div>`,
+    footer: p.met || over
+      ? h`<button class="btn ${p.met ? 'btn--primary' : 'btn--ghost'} btn--block" data-do="settle">
+            ${p.met ? `Claim +${spec.xp} XP` : 'Close it out'}</button>`
+      : h`<button class="btn btn--ghost btn--block" data-do="drop">Step away from it</button>`,
+    onMount: (el, close) => {
+      el.querySelector('[data-do="settle"]')?.addEventListener('click', (ev) => {
+        const res = settleTrial();
+        close();
+        if (res) reportTrial(res, ev.target);
+        refresh();
+      });
+      el.querySelector('[data-do="drop"]')?.addEventListener('click', async () => {
+        const ok = await confirmSheet({
+          title: 'Step away from this trial?',
+          message: 'It costs nothing and it is not recorded as a loss. You can take another whenever you want one.',
+          confirmLabel: 'Step away',
+        });
+        if (!ok) return;
+        abandonTrial(); haptic(10); close(); refresh();
+      });
+    },
+  });
 }
 
-/**
- * The chosen chain.
- *
- * Shows the concrete next number rather than the chain's name, because "The
- * Foundation, tier 2" tells you nothing about what to do this afternoon and
- * "4 of 21 days" tells you everything.
- */
-function pursuitCard(state) {
-  const p = pursuit(state);
-  if (!p) {
-    return h`
-      <div class="card pursuit pursuit--empty">
-        <div class="pursuit__k">Nothing chosen</div>
-        <p class="pursuit__b">
-          Fourteen chains are running whether you look at them or not. Name the one
-          that matters at the moment and it pays half as much again — the rest keep
-          counting quietly underneath.
-        </p>
-        <button class="btn btn--primary btn--block" data-act="pickpursuit" style="margin-top:11px">
-          Choose what you are pushing on
-        </button>
-      </div>`;
+function reportTrial(res, el) {
+  if (res.outcome === 'won') {
+    sfx('levelup'); haptic([20, 50, 25, 50, 40]);
+    confetti({ count: 110, origin: el?.getBoundingClientRect?.() });
+    toast(`${res.spec.title} · +${res.xp} XP`, { icon: icon('trophy'), tone: 'good', ms: 3400 });
+  } else if (res.outcome === 'partial') {
+    sfx('claim'); haptic([14, 30, 20]);
+    toast(`${res.value} of ${res.target} · +${res.xp} XP for the part you held`, { ms: 3600 });
+  } else {
+    haptic(10);
+    toast(`${res.value} of ${res.target}. Nothing lost — the days still count on your record.`, { ms: 3800 });
   }
-
-  const { quest, progress } = p;
-  const move = todaysMove(quest.goal.type, quest.goal, state);
-  return h`
-    <div class="card pursuit">
-      <div class="row-between">
-        <span class="pursuit__k">Pushing on</span>
-        <button class="pursuit__swap" data-act="pickpursuit">Change</button>
-      </div>
-      <div class="pursuit__t">${quest.chainTitle}</div>
-      <div class="pursuit__s">${quest.title} — ${quest.note}</div>
-      <div class="pursuit__meter">
-        <div class="pursuit__bar"><i style="width:${(progress.pct * 100).toFixed(1)}%"></i></div>
-        <span class="pursuit__n">${progress.value} / ${progress.target}</span>
-      </div>
-      ${move ? raw(h`
-        <a class="doneon" href="#/today">
-          ${icon('pointer', { size: 13 })}<span class="grow">${move}</span><span>on Today</span>
-        </a>`) : raw('')}
-      <div class="pursuit__foot">
-        ${icon('bolt', { size: 14 })}
-        <span class="grow">Tiers on this chain pay +50% while it is chosen</span>
-        <span class="pricepill">+${quest.xp + Math.round(quest.xp * PURSUIT_BONUS)}</span>
-      </div>
-    </div>`;
 }
 
-/** Choosing the chain, from the ones actually available to you. */
+/** Choosing what to push on. */
 function openPursuitSheet() {
   const state = getState();
   const rows = mainBoard(state).filter((r) => !r.locked && !r.done);
@@ -317,165 +482,59 @@ function openPursuitSheet() {
     body: h`
       <div class="stack-sm">
         <p class="prose" style="margin:0 0 4px">
-          One at a time. You can change it whenever you like — the others keep counting
-          underneath, they just do not pay the premium.
+          One at a time, and its tiers pay half as much again. You can change it whenever you like —
+          the others keep counting underneath, they just do not pay the premium.
         </p>
         ${rows.map((r) => raw(h`
           <button class="trialopt ${isPursued(r.quest.chain, state) ? 'is-on' : ''}"
-                  data-do="pick" data-chain="${r.quest.chain}">
+                  data-pick="${r.quest.chain}">
             <span class="grow">
               <span class="trialopt__t">${r.quest.chainTitle}</span>
               <span class="trialopt__d">${r.quest.note}</span>
+              ${raw((() => { const m = todaysMove(r.quest.goal.type, r.quest.goal, state);
+                return m ? h`<span class="trialopt__on">${m}</span>` : ''; })())}
             </span>
             <span class="pricepill">${r.progress.value}/${r.progress.target}</span>
           </button>`))}
         ${state.game.pursuit ? raw(h`
-          <button class="btn btn--ghost btn--block" data-do="clear" style="margin-top:6px">
-            Stop pushing on anything
-          </button>`) : raw('')}
+          <button class="btn btn--ghost btn--block" data-clear style="margin-top:6px">
+            Stop pushing on anything</button>`) : raw('')}
       </div>`,
     onMount: (el, close) => {
       el.addEventListener('click', (ev) => {
-        const pick = ev.target.closest('[data-do="pick"]');
+        const pick = ev.target.closest('[data-pick]');
         if (pick) {
-          setPursuit(pick.dataset.chain);
-          sfx('claim'); haptic([14, 30, 20]);
-          close(); refresh();
-          return;
+          setPursuit(pick.dataset.pick);
+          sfx('claim'); haptic([14, 30, 20]); close(); refresh(); return;
         }
-        if (ev.target.closest('[data-do="clear"]')) {
-          setPursuit(null); haptic(10); close(); refresh();
-        }
+        if (ev.target.closest('[data-clear]')) { setPursuit(null); haptic(10); close(); refresh(); }
       });
     },
   });
 }
 
-/* ====================================================================== */
-/* The Ascent.                                                            */
-/*                                                                        */
-/* This was a stack of cards with a checkbox list in it, which is a form.  */
-/* Three things separate a game screen from a form, and none of them is    */
-/* decoration:                                                            */
-/*                                                                        */
-/*   Place.  A climb is vertical and you are somewhere on it. The ladder   */
-/*           reads upward, with a spine running through it and your token  */
-/*           sitting on the rung you actually occupy.                      */
-/*   Ritual. A gate is a thing you break, not a form you complete. The     */
-/*           requirements are seals: unlit discs that take light as they   */
-/*           are met, and the gate opens only when the last one catches.   */
-/*   Weight. One emblem, large, at the top — the number that everything    */
-/*           else on the screen is about.                                  */
-/*                                                                        */
-/* Restraint is the constraint: gold on a dark ground, one glow, one       */
-/* pulse. The moment this reads as a slot machine it has failed a          */
-/* different way.                                                          */
-/* ====================================================================== */
+/** Every chain, with the claimable ones first. */
+function openChainsSheet() {
+  const state = getState();
+  const rows = mainBoard(state);
+  const claimable = rows.filter((r) => !r.done && !r.locked && r.progress.met);
+  const rest = rows.filter((r) => !claimable.includes(r));
 
-/** Progress drawn as an arc around the crest rather than a bar under it. */
-function crestRing(pct, sealed) {
-  const r = 52;
-  const c = 2 * Math.PI * r;
-  const off = c * (1 - Math.max(0, Math.min(1, pct)));
-  return `
-    <svg class="crest__ring" viewBox="0 0 120 120" aria-hidden="true">
-      <circle cx="60" cy="60" r="${r}" class="crest__track"/>
-      <circle cx="60" cy="60" r="${r}" class="crest__fill ${sealed ? 'is-sealed' : ''}"
-              stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
-    </svg>`;
-}
-
-function ascentHead(state) {
-  const lv = playerLevel(state);
-  const r = rankFor(lv.level);
-  const gate = nextGate(state);
-
-  return h`
-    <div class="crest ${lv.capped ? 'is-sealed' : ''}">
-      <div class="crest__halo" aria-hidden="true"></div>
-
-      <div class="crest__emblem">
-        ${raw(crestRing(lv.capped ? 1 : lv.pct, lv.capped))}
-        <div class="crest__inner">
-          <span class="crest__lv">${lv.level}</span>
-          <span class="crest__lvl">Level</span>
-        </div>
-        ${lv.capped ? raw(h`<span class="crest__seal">${icon('lock', { size: 14 })}</span>`) : raw('')}
-      </div>
-
-      <div class="crest__name">${r.name}</div>
-      <div class="crest__mean">${r.meaning}</div>
-
-      ${lv.capped
-        ? raw(h`
-          <div class="crest__banked">
-            <span class="crest__bn">${lv.banked.toLocaleString()}</span>
-            <span class="crest__bl">XP held behind the seal · ${lv.wouldBe - lv.level} level${lv.wouldBe - lv.level === 1 ? '' : 's'}</span>
-          </div>`)
-        : raw(h`
-          <div class="crest__next">
-            ${lv.need - lv.into} XP to level ${lv.level + 1}${gate ? ` · seal at ${gate.level}` : ''}
-          </div>`)}
-    </div>`;
-}
-
-/**
- * The gate.
- *
- * Each requirement is a seal — a disc that is dark until its condition is met
- * and lit afterwards. Same information a checklist carried, arranged so that
- * the screen has a state rather than a completion percentage: five dark discs
- * is a different feeling from "0/5", and the last one catching is an event.
- */
-function gateCardAscent(state) {
-  const gate = nextGate(state);
-  if (!gate) {
-    return h`
-      <div class="gateway is-crowned">
-        <div class="gateway__k">Muhsin</div>
-        <div class="gateway__t">Every seal broken</div>
-        <p class="gateway__b">There is nothing above this rank. Levels run on freely from here.</p>
-      </div>`;
-  }
-
-  const seals = [
-    { label: `Level ${gate.level}`, have: Math.min(gate.xpHave, gate.level), n: gate.level, met: gate.xpReady, glyph: 'bolt' },
-    ...gate.reqs.map((r) => ({
-      label: r.label, have: Math.min(r.have, r.n), n: r.n, met: r.met,
-      glyph: r.id === 'streak' ? 'flame' : r.id === 'trials' ? 'trophy'
-        : r.id === 'automatic' ? 'sprout' : 'star',
-    })),
-  ];
-  const lit = seals.filter((s) => s.met).length;
-
-  return h`
-    <div class="gateway ${gate.ready ? 'is-open' : ''}">
-      <div class="gateway__arch" aria-hidden="true"></div>
-      <div class="gateway__k">${gate.ready ? 'The seal is broken' : `The ${ordinalWord(gate.rank)} seal`}</div>
-      <div class="gateway__t">${gate.name}</div>
-      <div class="gateway__m">${gate.meaning}</div>
-
-      <div class="seals">
-        ${seals.map((s) => raw(h`
-          <div class="seal ${s.met ? 'is-lit' : ''}">
-            <div class="seal__disc">${icon(s.glyph, { size: 19 })}</div>
-            <div class="seal__n">${s.have}<span>/${s.n}</span></div>
-            <div class="seal__l">${s.label}</div>
-          </div>`))}
-      </div>
-
-      ${gate.ready
-        ? raw(h`
-          <button class="btn btn--primary btn--lg btn--block gateway__go" data-act="ascend">
-            Ascend to ${gate.name}
-          </button>`)
-        : raw(h`<p class="gateway__b">${gate.blurb}</p>
-                <div class="gateway__count">${lit} of ${seals.length} lit</div>`)}
-    </div>`;
-}
-
-function ordinalWord(n) {
-  return ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth'][n] || `${n}th`;
+  sheet({
+    title: 'Every chain',
+    body: h`
+      <div class="stack">
+        <p class="prose" style="margin:0">
+          These are not tasks. They watch what you already do and pay out when you cross a number —
+          you never start one and you cannot fail one. The only thing to do here is claim one when
+          it lights up.
+        </p>
+        ${claimable.length ? raw(h`<div class="path">
+          ${raw(claimable.map((row) => pathNode(row, rows.indexOf(row), true)).join(''))}
+        </div>`) : raw('')}
+        <div class="path">${raw(rest.map((row, i) => pathNode(row, i, false)).join(''))}</div>
+      </div>`,
+  });
 }
 
 /**
@@ -507,6 +566,11 @@ function ladderList(state) {
           </div>
         </div>`))}
     </div>`;
+}
+
+/** The whole ladder, behind the crest. */
+function openClimbSheet() {
+  sheet({ title: 'The climb', body: h`<div class="stack">${raw(ladderList(getState()))}</div>` });
 }
 
 /** The moment of breaking through. */
