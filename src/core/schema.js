@@ -147,6 +147,26 @@ export function makeAcademics(patch = {}) {
   };
 }
 
+/**
+ * The reps ladder — see core/training.js and data/exercises.js.
+ *
+ * `plan` is the round you are on: one rung per movement pattern. `log` is what
+ * you actually did, one entry per day, and it is the only record — there is no
+ * streak here and nothing derived from absence, because a missed day is not an
+ * event this feature has an opinion about.
+ */
+export function makeTraining(patch = {}) {
+  return {
+    plan: [],            // [{mid, rung}] — ordered, one per movement
+    goalRounds: 1,       // how many times through you are aiming for; never enforced
+    restSec: 60,         // rest timer between sets; 0 switches it off entirely
+    log: {},             // dayKey -> {sets:[{id, mid, rung, reps, unit, score, at}], paid}
+    declined: [],        // "push:full" — step-ups offered and turned down, so it asks once
+    startedAt: null,
+    ...patch,
+  };
+}
+
 export function makeLedger(patch = {}) {
   return {
     entries: [],       // [{id, at, day, kind, type, note, correction, severity, resolved}]
@@ -256,6 +276,7 @@ export function defaultState() {
     logs: {},          // dayKey -> { habitId: {status, at, note} }
     journal: {},       // dayKey -> {gratitude:[], win, lesson, mood, energy, shutdown}
     focus: { sessions: [], tasks: [] },
+    training: makeTraining(),
     recovery: makeRecovery(),
     ledger: makeLedger(),
     academics: makeAcademics(),

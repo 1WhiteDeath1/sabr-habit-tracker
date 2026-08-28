@@ -30,6 +30,7 @@ import { upcoming, badgeCount } from './core/upcoming.js';
 import { icon } from './ui/icons.js';
 import { uniScreen } from './features/uni.js';
 import { vaultScreen } from './features/vault.js';
+import { repsScreen } from './features/reps.js';
 import { adoptExisting, opensAtLevel, refundRetired } from './core/unlocks.js';
 import { UNLOCKS, UNLOCK_ORDER } from './data/unlocks.js';
 // Imported, not mirrored: main.js kept its own copy of the slot thresholds,
@@ -94,6 +95,7 @@ function boot() {
   register('ledger',  ledgerScreen);
   register('uni',     uniScreen);
   register('vault',   vaultScreen);
+  register('reps',    repsScreen);
   setNotFound(todayScreen);
 
   setOutlet(document.getElementById('outlet'));
@@ -178,7 +180,7 @@ function paintNav(route) {
   nav.classList.toggle('hidden', onboarding);
 
   // "habits" and "night" live under Today; keep that tab lit while you are in them.
-  const activeTab = ({ habits: 'today', night: 'today', ledger: 'today', focus: 'today' })[route.name] || route.name;
+  const activeTab = ({ habits: 'today', night: 'today', ledger: 'today', focus: 'today', reps: 'today' })[route.name] || route.name;
   for (const a of nav.querySelectorAll('[data-tab]')) {
     a.classList.toggle('is-active', a.dataset.tab === activeTab);
   }

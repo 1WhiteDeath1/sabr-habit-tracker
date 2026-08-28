@@ -51,6 +51,16 @@ that is deliberate, so the game never becomes a second job.
 thing you are avoiding, and an "Unstick me" flow that shrinks a stalled task down
 to a physical first move.
 
+**Reps** — indoor bodyweight training, built as five ladders (pull, push, legs,
+core, heart) with six rungs each. Your **round** is one set of the rung you are
+standing on for each pattern; the famous 5 pull-ups / 10 push-ups / 15 squats is
+one of five preset rounds, and somebody who cannot do a pull-up starts two rungs
+down on towel rows rather than staring at a target they will quietly stop
+opening. **A round of one movement is a round** — pick "just push-ups" or "just
+squats" from the picker and the screen counts sets instead of rounds. There is
+an optional rest clock between sets. Nothing on this screen has a streak: see
+the section below.
+
 **Shield** — the pornography-recovery section. Clean counter, a full-screen SOS
 urge-surfing timer with a breath pacer, HALT check and grounding prompts, trigger
 pattern analysis showing which hours and which states actually do the damage, an
@@ -338,6 +348,46 @@ The threshold is *days missed*, not days away, and those are not the same
 number — a last log two days back means exactly one day was missed, because
 today has not finished yet. One miss is not a lapse and is not treated as one.
 
+### Reps has no streak, on purpose
+
+Every other counter in this app is a chain of some kind. The training screen
+deliberately has none, and that is the design rather than an omission.
+
+- **A missed day is a non-event.** Nothing decays, nothing turns red, nothing is
+  subtracted. The chart draws a rest day as a flat grey tick, never as a gap and
+  never as damage.
+- **Everything counted only goes up**: days trained, points banked, best set on
+  each rung, how far up each ladder you stand. Take a fortnight off and come back
+  to exactly the numbers you left.
+- **Under the target still counts.** Three push-ups scores three push-ups, pro
+  rata. A bad day is a small bar, not an absent one.
+
+The one number that answers "is this actually working" is a weekly points total
+compared with the week before. Points are per-rung rather than per-rep — ten wall
+push-ups and ten real push-ups are not the same work — so the line moves when you
+get **stronger**, not only when you do more. That is also what makes the ladder
+worth climbing: the same rep count scores more the moment you move up a rung.
+
+Stepping up is always an offer and never automatic. Clear a rung's target in one
+set on three separate days inside four weeks and the app says so, once. Say "not
+yet" and it stops having an opinion until you move. Stepping *down* is a free
+move the app will never argue with.
+
+**Rest between sets** is a clock, not a gate. It starts when you log a set, sits
+above the nav counting down, follows you if you leave the screen, and offers
++20s and Skip. The next set can always be logged while it is still running.
+Sixty seconds by default, six choices from Off to two minutes.
+
+**One movement is a whole round.** Only push-ups, only squats — the picker has a
+row for it, the editor can pare an existing round down to one, and the screen
+then says "sets" everywhere it would have said "rounds". Adding a second pattern
+later is one tap.
+
+Reps pays XP into **Jasad** (Body), per point of work, with a daily ceiling of 45
+— about three habits' worth. Training a full session is one of the better things
+you can do with an evening; it is still not worth more than the rest of the day
+put together. It is free, permanently, and is listed as such in the Vault.
+
 ### Habit slots
 
 You start with **three** habit slots. More open at levels 5, 10, 16, 24, 34 and
@@ -595,6 +645,7 @@ src/
     economy.js        habit difficulty, prices, and the two XP ledgers
     stake.js          the commitment device and its ledger
     voice.js          recording, storing and playing your own message
+    training.js       the reps ladders: rounds, scoring, step-ups, no streak
     prayer.js         prayer times computed offline from solar position
     router.js         hash router
     notify.js         reminders
@@ -604,6 +655,7 @@ src/
     research.js       the evidence index
     scripture.js      Qur'an and hadith, tagged by the moment they surface
     fast.js           FAST-NUCES grade scale, weightage defaults, campuses
+    exercises.js      five movement ladders, six rungs each, and the preset rounds
   ui/
     styles.css        design system
     dom.js            h/raw templating, sheets, toasts, haptics

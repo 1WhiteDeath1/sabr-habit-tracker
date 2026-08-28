@@ -21,6 +21,8 @@ import { habitRow, passageCard, dayRing, timeGroup, evidenceCard, attrColorFor, 
 import { refresh, go } from '../core/router.js';
 import { classesOn, markAttendance, attendanceOverview, upcomingTasks, overdueTasks, toggleTask, ATTEND } from '../core/academics.js';
 import { openSos } from './sos.js';
+import { repsToday } from './reps.js';
+import { hasPlan } from '../core/training.js';
 import { sfx } from '../core/audio.js';
 import { icon } from '../ui/icons.js';
 import { streakState, milestoneDue, claimMilestone, pendingBreak, acknowledgeBreak,
@@ -89,6 +91,10 @@ export const todayScreen = {
       // Only advertise a module that is actually switched on — a shortcut into
       // a locked screen is a dead end dressed up as a suggestion.
       running || !isOwned('focus', state) ? '' : listLink('focus', icon('target'), 'Start a focus block'),
+      // Reps is free and has no gate, so the only question is whether a round
+      // exists yet. Once one does it moves up into the main stack, where it can
+      // show what is left of it — this row is the way in before that.
+      hasPlan(state) ? '' : listLink('reps', icon('jasad'), 'Set an indoor round'),
       now >= 19 * 60 && isOwned('night', state) ? listLink('night', icon('moon'), 'Shutdown ritual') : '',
       listLink('ledger', icon('ledger'), 'The ledger'),
       h`<div class="card">${raw(passageCard(passage, { state }))}</div>`,
@@ -143,6 +149,8 @@ export const todayScreen = {
             ${g.items.map((it) => raw(habitRow(it.habit, key, { state, camp })))}
           `).join(''))}
 
+          ${raw(repsToday(state))}
+
           ${later.length ? raw(h`
             <details class="more">
               <summary><span>More today</span><i class="more__count">${later.length}</i></summary>
@@ -177,6 +185,7 @@ export const todayScreen = {
       night:   () => go('night'),
       ledger:  () => go('ledger'),
       focus:   () => go('focus'),
+      reps:    () => go('reps'),
       present: (el, ds) => { markAttendance(ds.id, todayKey(), ATTEND.PRESENT); sfx('tiny'); haptic([12, 30, 16]); refresh(); },
       absent:  (el, ds) => { markAttendance(ds.id, todayKey(), ATTEND.ABSENT);  haptic(10); refresh(); },
       task:    (el, ds) => { toggleTask(ds.id); sfx('tiny'); haptic([12, 30, 16]); refresh(); },
