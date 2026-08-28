@@ -25,7 +25,7 @@ import { getState, mutate } from './store.js';
 import { grantXp } from './game.js';
 import { uid } from './schema.js';
 import { todayKey, lastNDays, addDays } from './dates.js';
-import { MOVEMENTS, MOVEMENT_ORDER, UNIT, rung, rungIndex, nextRung, prevRung, routine } from '../data/exercises.js';
+import { MOVEMENTS, MOVEMENT_ORDER, UNIT, rung, rungIndex, nextRung, prevRung, routine, defaultRungFor } from '../data/exercises.js';
 
 /**
  * XP, and its ceiling.
@@ -48,6 +48,22 @@ export const STEP_UP_HITS = 3;
 /** ...counted within this window, so a target you cleared last spring does not
  *  push you up a ladder you have since come down. */
 export const STEP_UP_WINDOW = 28;
+
+/**
+ * Rest between sets.
+ *
+ * Offered because the alternative is worse: without a clock, a rest is however
+ * long the next notification takes, and the round quietly becomes a twenty
+ * minute phone session with some push-ups in it. Sixty seconds is the default
+ * because it is roughly what the evidence supports for bodyweight work at these
+ * rep ranges, and because it is short enough that you do not go looking for
+ * something to read.
+ *
+ * It is a suggestion with a skip button and an off switch, never a gate: the
+ * next set can always be logged while the clock is still running.
+ */
+export const REST_CHOICES = [0, 30, 45, 60, 90, 120];
+export const REST_DEFAULT = 60;
 
 /* ------------------------------------------------------------------ plan */
 
@@ -73,6 +89,35 @@ export function setGoalRounds(n) {
   mutate((s) => {
     s.training.goalRounds = Math.max(1, Math.min(10, Math.round(Number(n) || 1)));
   });
+}
+
+/** Rest between sets, in seconds. 0 means the timer is switched off. */
+export function restSeconds(state = getState()) {
+  const n = Number(state.training?.restSec);
+  if (!Number.isFinite(n) || n < 0) return REST_DEFAULT;
+  return Math.min(600, Math.round(n));
+}
+
+export function setRestSeconds(n) {
+  mutate((s) => { s.training.restSec = Math.max(0, Math.min(600, Math.round(Number(n) || 0))); });
+}
+
+/**
+ * What one time through the plan is called.
+ *
+ * A round of one movement is a set, and calling it a round would be the app
+ * using its own jargon at somebody who asked for push-ups.
+ */
+export function roundWord(state = getState()) {
+  return plan(state).length === 1 ? 'set' : 'round';
+}
+
+/** Train one pattern and nothing else. */
+export function onlyMovement(mid, rid = null) {
+  const r = rid ? rung(mid, rid) : defaultRungFor(mid);
+  if (!r) return null;
+  setPlan([{ mid, rung: r.id }]);
+  return r;
 }
 
 /** Replace the whole round. Order is preserved exactly as given. */

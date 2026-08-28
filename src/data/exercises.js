@@ -191,6 +191,19 @@ export function prevRung(mid, rid) {
   return m.rungs[i - 1];
 }
 
+/**
+ * Where a movement starts when you pick it on its own.
+ *
+ * The gentlest rung that needs no equipment, so "just push-ups" never opens on
+ * something the room cannot supply. Pull has no equipment-free rung at all, so
+ * it falls back to the bottom of its ladder.
+ */
+export function defaultRungFor(mid) {
+  const m = MOVEMENTS[mid];
+  if (!m) return null;
+  return m.rungs.find((r) => r.gear === 'none') || m.rungs[0];
+}
+
 /** "10 push-ups" / "30 seconds" — one set, in words. */
 export function describeSet(r, reps = null) {
   const n = reps == null ? r.target : reps;

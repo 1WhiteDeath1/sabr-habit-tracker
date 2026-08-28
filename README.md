@@ -56,7 +56,10 @@ core, heart) with six rungs each. Your **round** is one set of the rung you are
 standing on for each pattern; the famous 5 pull-ups / 10 push-ups / 15 squats is
 one of five preset rounds, and somebody who cannot do a pull-up starts two rungs
 down on towel rows rather than staring at a target they will quietly stop
-opening. Nothing on this screen has a streak: see the section below.
+opening. **A round of one movement is a round** — pick "just push-ups" or "just
+squats" from the picker and the screen counts sets instead of rounds. There is
+an optional rest clock between sets. Nothing on this screen has a streak: see
+the section below.
 
 **Shield** — the pornography-recovery section. Clean counter, a full-screen SOS
 urge-surfing timer with a breath pacer, HALT check and grounding prompts, trigger
@@ -369,6 +372,16 @@ Stepping up is always an offer and never automatic. Clear a rung's target in one
 set on three separate days inside four weeks and the app says so, once. Say "not
 yet" and it stops having an opinion until you move. Stepping *down* is a free
 move the app will never argue with.
+
+**Rest between sets** is a clock, not a gate. It starts when you log a set, sits
+above the nav counting down, follows you if you leave the screen, and offers
++20s and Skip. The next set can always be logged while it is still running.
+Sixty seconds by default, six choices from Off to two minutes.
+
+**One movement is a whole round.** Only push-ups, only squats — the picker has a
+row for it, the editor can pare an existing round down to one, and the screen
+then says "sets" everywhere it would have said "rounds". Adding a second pattern
+later is one tap.
 
 Reps pays XP into **Jasad** (Body), per point of work, with a daily ceiling of 45
 — about three habits' worth. Training a full session is one of the better things

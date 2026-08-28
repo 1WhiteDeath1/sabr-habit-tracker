@@ -159,6 +159,7 @@ export function makeTraining(patch = {}) {
   return {
     plan: [],            // [{mid, rung}] — ordered, one per movement
     goalRounds: 1,       // how many times through you are aiming for; never enforced
+    restSec: 60,         // rest timer between sets; 0 switches it off entirely
     log: {},             // dayKey -> {sets:[{id, mid, rung, reps, unit, score, at}], paid}
     declined: [],        // "push:full" — step-ups offered and turned down, so it asks once
     startedAt: null,
