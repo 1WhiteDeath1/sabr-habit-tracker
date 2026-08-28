@@ -4,8 +4,9 @@
 import { h, raw, actions, haptic, toast, xpBurst, sheet, empty, bar, qaRow } from '../ui/dom.js';
 import { getState } from '../core/store.js';
 import { STATUS, PRAYER_LABEL, CATEGORIES, XP } from '../core/schema.js';
-import { dayPlan, dayProgress, setStatus, statusOf, atRisk, streakOf, ageInDays, completionRate, undoTick } from '../core/habits.js';
-import { todayKey, prettyDayLong, minutesNow, prettyTime, parseHM, daysBetween } from '../core/dates.js';
+import { dayPlan, dayProgress, setStatus, statusOf, atRisk, streakOf, ageInDays, completionRate, undoTick,
+         scheduleHabit, scheduleOf } from '../core/habits.js';
+import { todayKey, prettyDayLong, minutesNow, prettyTime, parseHM, toHM, daysBetween } from '../core/dates.js';
 import { prayerWindow } from '../core/prayer.js';
 import { passageFor } from '../data/scripture.js';
 import { todaysOffers, sideStatus, acceptSide, completeSide } from '../core/quests.js';
@@ -13,6 +14,7 @@ import { themeOf } from '../data/quests.js';
 import { comboMultiplier } from '../core/game.js';
 import { isOwned } from '../core/unlocks.js';
 import { gateCard, gateMount } from '../ui/gate.js';
+import { LEAD_MINUTES } from '../core/notify.js';
 import { recoveryStats } from '../core/recovery.js';
 import { habitRow, passageCard, dayRing, timeGroup, evidenceCard, attrColorFor, sideQuestCard } from '../ui/widgets.js';
 import { refresh, go } from '../core/router.js';
@@ -571,6 +573,46 @@ function phaseMark(label, minutes, isNow) {
     </div>`;
 }
 
+/**
+ * Putting a clock on a habit.
+ *
+ * Two buttons rather than a mode switch plus a save: "just today" and "every
+ * day" are the whole decision, and making them the actions means you cannot
+ * set a time and then wonder which one you got. The one-off is stored apart
+ * from the standing time, so using it tonight never edits your routine.
+ */
+function scheduleBlock(habit, key) {
+  const sched = scheduleOf(habit, key);
+  const value = sched.at != null ? toHM(sched.at) : '';
+
+  return h`
+    <div class="card sched">
+      <div class="row-between">
+        <span class="card__title" style="margin:0">${icon('clock')} Time</span>
+        ${sched.at != null ? raw(h`
+          <span class="sched__now">
+            ${prettyTime(sched.at)} · ${sched.mode === 'today' ? 'today only' : 'every day'}
+          </span>`) : raw('')}
+      </div>
+
+      <input type="time" id="sched-time" class="sched__in" value="${value}">
+
+      <div class="row" style="gap:7px;margin-top:9px">
+        <button class="btn btn--ghost btn--sm grow" data-sched="today">Just today</button>
+        <button class="btn btn--primary btn--sm grow" data-sched="always">Every day</button>
+      </div>
+      ${sched.at != null ? raw(h`
+        <button class="btn btn--ghost btn--sm btn--block" data-sched="clear" style="margin-top:7px">Clear it</button>`) : raw('')}
+
+      <p class="sched__note">
+        An alarm ${LEAD_MINUTES} minutes before, with buttons to mark it done or push it
+        ten minutes. It needs notifications allowed, and it can only reach you while the
+        app is open or recently used — a web app cannot wake your phone the way a real
+        alarm clock does.
+      </p>
+    </div>`;
+}
+
 /** A row in "More today" — a label and a chevron, nothing explaining itself.
  *  The parameter is `ico` and not `icon`: the latter would shadow the import. */
 function listLink(act, ico, label) {
@@ -765,6 +807,8 @@ export function openHabitDetail(id) {
 
       ${habit.evidence ? raw(evidenceCard(habit.evidence, { full: true })) : raw('')}
 
+      ${raw(scheduleBlock(habit, key))}
+
       <div class="row wrap" style="gap:6px">
         ${cat ? raw(h`<span class="pill">${cat.label}</span>`) : raw('')}
         ${habit.anchorPrayer ? raw(h`<span class="pill">after ${PRAYER_LABEL[habit.anchorPrayer]}</span>`) : raw('')}
@@ -780,7 +824,33 @@ export function openHabitDetail(id) {
       <button class="btn btn--ghost" data-do="tiny">2-min</button>
       <button class="btn btn--primary" data-do="done">Done</button>`,
     onMount: (el, close) => {
+      // Scheduling lives inside this sheet, so it binds here rather than in
+      // the screen's action map.
+      const timeInput = el.querySelector('#sched-time');
       el.addEventListener('click', (ev) => {
+        const set = ev.target.closest('[data-sched]');
+        if (set) {
+          const mode = set.dataset.sched;
+          if (mode === 'clear') {
+            scheduleHabit(id, null, 'today', key);
+            scheduleHabit(id, null, 'always', key);
+            haptic(10);
+            toast('Time cleared');
+          } else {
+            const mins = parseHM(timeInput.value);
+            if (mins == null) { toast('Pick a time first', { tone: 'warn' }); return; }
+            scheduleHabit(id, mins, mode, key);
+            haptic([12, 30, 16]);
+            toast(mode === 'today'
+              ? `Today at ${prettyTime(mins)} · alarm ${LEAD_MINUTES} minutes before`
+              : `Every day at ${prettyTime(mins)} · alarm ${LEAD_MINUTES} minutes before`,
+              { icon: icon('clock'), tone: 'good', ms: 3400 });
+          }
+          close();
+          refresh();
+          return;
+        }
+
         const btn = ev.target.closest('[data-do]');
         if (!btn) return;
         const map = { done: [STATUS.DONE, 'full'], tiny: [STATUS.PARTIAL, 'tiny'], skip: [STATUS.SKIP, 'full'] };

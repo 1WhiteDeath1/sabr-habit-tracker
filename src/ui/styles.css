@@ -2673,3 +2673,22 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
   opacity: .75;
 }
 .habitrow.is-risk .habitrow__worth { color: var(--red); opacity: 1; }
+
+/* ---- putting a clock on a habit ---- */
+
+.sched__now {
+  font-size: .74rem; font-weight: 800; color: var(--blue-edge);
+  font-variant-numeric: tabular-nums;
+}
+[data-theme="dark"] .sched__now { color: var(--blue); }
+.sched__in {
+  width: 100%; margin-top: 10px; padding: 11px 13px;
+  border-radius: var(--r-sm); border: 1px solid var(--border-str);
+  background: var(--surface-2); color: var(--text);
+  font: inherit; font-weight: 750; font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+.sched__note {
+  margin: 10px 0 0; font-size: .74rem; line-height: 1.55;
+  font-weight: 600; color: var(--muted);
+}

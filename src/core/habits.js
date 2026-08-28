@@ -216,11 +216,16 @@ export function ageInDays(habit, state = getState()) {
 /* -------------------------------------------------------- the day's plan */
 
 /** Effective sort time (minutes since midnight) for ordering the day. */
-export function scheduleMinutes(habit, prayerTimes) {
+export function scheduleMinutes(habit, prayerTimes, key = todayKey()) {
+  // A time you set for today outranks everything, including the prayer anchor:
+  // it is the most recent and most specific thing you said about this habit.
+  if (habit.todayAt && habit.todayAt.day === key && typeof habit.todayAt.at === 'number') {
+    return habit.todayAt.at;
+  }
+  if (typeof habit.reminderAt === 'number') return habit.reminderAt;
   if (habit.anchorPrayer && prayerTimes?.[habit.anchorPrayer] != null) {
     return prayerTimes[habit.anchorPrayer] + 1;   // just after the prayer
   }
-  if (typeof habit.reminderAt === 'number') return habit.reminderAt;
   const slot = SLOTS[habit.slot] || SLOTS.anytime;
   return slot.id === 'anytime' ? 24 * 60 + 30 : slot.from;
 }
@@ -233,7 +238,7 @@ export function dayPlan(state = getState(), key = todayKey()) {
   const times = prayerTimesFor(key, state.settings);
   const items = state.habits
     .filter((h) => isDue(h, key))
-    .map((h) => ({ habit: h, at: scheduleMinutes(h, times) }));
+    .map((h) => ({ habit: h, at: scheduleMinutes(h, times, key) }));
 
   // Habit stacking: a stacked habit sits immediately after its anchor habit.
   const byId = new Map(items.map((x) => [x.habit.id, x]));
@@ -296,6 +301,33 @@ export function fromLibrary(item) {
     evidence: item.evidence || null,
     proof: item.proof || null,
   };
+}
+
+/**
+ * Put a time on a habit.
+ *
+ * `mode` is 'today' for a one-off or 'always' for a standing time; passing a
+ * null time clears whichever one `mode` names. The two live in separate fields
+ * so that setting one never silently edits the other — the commonest way a
+ * scheduler surprises somebody is by turning "just this once" into a rule.
+ */
+export function scheduleHabit(id, minutes, mode = 'always', key = todayKey()) {
+  mutate((s) => {
+    const hab = s.habits.find((x) => x.id === id);
+    if (!hab) return false;
+    if (mode === 'today') hab.todayAt = minutes == null ? null : { day: key, at: minutes };
+    else hab.reminderAt = minutes == null ? null : minutes;
+  });
+  return true;
+}
+
+/** The time showing on a habit for a given day, and where it came from. */
+export function scheduleOf(habit, key = todayKey()) {
+  if (habit.todayAt && habit.todayAt.day === key && typeof habit.todayAt.at === 'number') {
+    return { at: habit.todayAt.at, mode: 'today' };
+  }
+  if (typeof habit.reminderAt === 'number') return { at: habit.reminderAt, mode: 'always' };
+  return { at: null, mode: null };
 }
 
 export function addHabit(patch) {

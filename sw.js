@@ -7,7 +7,7 @@
  * exception, and the app must open on a phone in flight mode at 5am.
  */
 
-const VERSION = 'sabr-v42';
+const VERSION = 'sabr-v43';
 const SHELL = [
   './',
   './index.html',
@@ -135,13 +135,52 @@ function refresh(req) {
 }
 
 self.addEventListener('notificationclick', (event) => {
+  const { action } = event;
+  const data = event.notification.data || {};
   event.notification.close();
+
+  // "Ten minutes" re-arms the same alarm without waking the app at all. The
+  // page may well be gone by now, and a snooze that needs the page open is not
+  // a snooze.
+  if (action === 'snooze') {
+    event.waitUntil(new Promise((resolve) => {
+      setTimeout(() => {
+        self.registration.showNotification(event.notification.title, {
+          body: event.notification.body,
+          tag: event.notification.tag,
+          data,
+          icon: 'icons/icon-192.png',
+          badge: 'icons/icon-192.png',
+          requireInteraction: true,
+          renotify: true,
+          vibrate: [140, 70, 140, 70, 260],
+          actions: [
+            { action: 'done', title: 'Mark done' },
+            { action: 'snooze', title: 'Ten minutes' },
+          ],
+        }).then(resolve, resolve);
+      }, 10 * 60 * 1000);
+    }));
+    return;
+  }
+
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // Marking done needs the page, because the page owns the store. Tell
+    // whichever window exists; if none does, open one and it will pick the
+    // message up on boot.
     for (const client of all) {
-      if ('focus' in client) return client.focus();
+      if ('focus' in client) {
+        if (action === 'done' && data.habitId) {
+          client.postMessage({ type: 'habit-action', action, habitId: data.habitId, day: data.day });
+        }
+        return client.focus();
+      }
     }
-    return self.clients.openWindow('./index.html#/today');
+    const url = action === 'done' && data.habitId
+      ? `./index.html#/today?do=${encodeURIComponent(data.habitId)}`
+      : './index.html#/today';
+    return self.clients.openWindow(url);
   })());
 });
 

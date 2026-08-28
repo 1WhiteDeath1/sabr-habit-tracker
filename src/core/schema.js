@@ -64,7 +64,12 @@ export function makeHabit(patch = {}) {
     why: '',                 // personal reason, shown when you are about to skip
     evidence: null,          // key into RESEARCH, shows the "why this works" card
     proof: null,             // {source:'quran'|'hadith', ...} scripture backing
-    reminderAt: null,        // minutes since midnight, or null
+    // A standing time, in minutes since midnight — every day until cleared.
+    reminderAt: null,
+    // A time for one day only: {day:'YYYY-MM-DD', at: minutes}. Kept separate
+    // from reminderAt rather than overwriting it, so "just today" can never
+    // quietly become "forever" and a one-off cannot destroy a standing time.
+    todayAt: null,
     easyUntil: null,         // day key: until then the target is `tiny` — see core/comeback.js
     archived: false,
     createdAt: Date.now(),

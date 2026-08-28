@@ -262,6 +262,64 @@ function blocked(item) {
   return true;
 }
 
+/* Deleted by accident when the pack drill-down was replaced with the
+ * gallery: the rewrite sliced from renderLibrary to mountLibrary and this
+ * sat between them, leaving two live call sites pointing at nothing. */
+/** Setting or changing the stake. */
+function openStakeSheet() {
+  const st = getState().stake || {};
+  sheet({
+    title: 'Your stake',
+    body: h`
+      <div class="stack">
+        <p class="prose" style="margin:0">
+          Charged for a day where <strong>nothing</strong> due got done. A partial day is a day
+          you showed up, and it never counts against you.
+        </p>
+        <label class="field">
+          <span>What you owe per missed day</span>
+          <select id="stk-kind">
+            ${Object.values(STAKE_KINDS).map((k) => raw(h`<option value="${k.id}" ${st.kind === k.id ? 'selected' : ''}>${k.label} \u2014 ${k.blurb}</option>`))}
+          </select>
+        </label>
+        <div class="row" style="gap:10px">
+          <label class="field grow" style="margin:0">
+            <span>Amount</span>
+            <input type="number" id="stk-amount" min="1" max="999" value="${st.amount || 2}">
+          </label>
+          <label class="field grow" style="margin:0">
+            <span>Label</span>
+            <input type="text" id="stk-unit" value="${st.unitLabel || ''}" placeholder="\u00a3, rakats, pages\u2026">
+          </label>
+        </div>
+        <p class="muted" style="margin:0;font-size:.79rem;line-height:1.5">
+          The app records the debt. It never takes anything and never tells anyone \u2014 settling it
+          is between you and Allah.
+        </p>
+      </div>`,
+    footer: h`
+      ${st.enabled ? raw('<button class="btn btn--ghost" data-do="off">Turn off</button>') : raw('')}
+      <button class="btn btn--primary" data-do="save">${st.enabled ? 'Update' : 'Start'}</button>`,
+    onMount: (el, close) => {
+      el.addEventListener('click', (ev) => {
+        const act = ev.target.closest('[data-do]')?.dataset.do;
+        if (act === 'off') { stopStake(); toast('Stake off. Anything already owed stays owed.'); close(); refresh(); }
+        if (act === 'save') {
+          startStake({
+            kind: el.querySelector('#stk-kind').value,
+            amount: Math.min(999, Math.max(1, Number(el.querySelector('#stk-amount').value) || 1)),
+            unitLabel: el.querySelector('#stk-unit').value.trim(),
+          });
+          haptic([14, 30, 20]);
+          toast('Stake set. It counts fully missed days only.', { tone: 'good' });
+          close();
+          refresh();
+        }
+      });
+    },
+  });
+}
+
 /* ====================================================================== */
 /* The gallery.                                                           */
 /*                                                                        */
