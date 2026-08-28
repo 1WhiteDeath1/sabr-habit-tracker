@@ -27,9 +27,9 @@
 // with work you did last month is not a trial.
 
 export const TIERS = {
-  light:    { id: 'light',    label: 'Light',    days: 3,  emoji: '\u{1F949}' },
-  standard: { id: 'standard', label: 'Standard', days: 7,  emoji: '\u{1F948}' },
-  hard:     { id: 'hard',     label: 'Hard',     days: 14, emoji: '\u{1F947}' },
+  light:    { id: 'light',    label: 'Light',    days: 3,  metal: 'bronze' },
+  standard: { id: 'standard', label: 'Standard', days: 7,  metal: 'silver' },
+  hard:     { id: 'hard',     label: 'Hard',     days: 14, metal: 'gold' },
 };
 export const TIER_ORDER = ['light', 'standard', 'hard'];
 

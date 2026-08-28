@@ -52,17 +52,30 @@ import { LIBRARY } from '../data/library.js';
  * opens mostly locked reads as a paywall rather than as a map.
  */
 export const DIFFICULTY = {
-  1: { id: 1, label: 'Bronze',   metal: 'bronze',   emoji: '\u{1F949}', cost: 20,  minLevel: 1,
+  1: { id: 1, label: 'Bronze',   metal: 'bronze',   cost: 20,  minLevel: 1,
        blurb: 'A minute or two. Hard to have an excuse.' },
-  2: { id: 2, label: 'Silver',   metal: 'silver',   emoji: '\u{1F948}', cost: 45,  minLevel: 1,
+  2: { id: 2, label: 'Silver',   metal: 'silver',   cost: 45,  minLevel: 1,
        blurb: 'Small, but you have to remember it.' },
-  3: { id: 3, label: 'Gold',     metal: 'gold',     emoji: '\u{1F947}', cost: 90,  minLevel: 2,
+  3: { id: 3, label: 'Gold',     metal: 'gold',     cost: 90,  minLevel: 2,
        blurb: 'A real slice of the day.' },
-  4: { id: 4, label: 'Platinum', metal: 'platinum', emoji: '\u{1F4A0}', cost: 160, minLevel: 5,
+  4: { id: 4, label: 'Amethyst', metal: 'amethyst', cost: 160, minLevel: 5,
        blurb: 'Needs the day arranged around it.' },
-  5: { id: 5, label: 'Diamond',  metal: 'diamond',  emoji: '\u{1F48E}', cost: 260, minLevel: 9,
+  5: { id: 5, label: 'Diamond',  metal: 'diamond',  cost: 260, minLevel: 9,
        blurb: 'The kind most people quit. Take one at a time.' },
 };
+
+/**
+ * The rank mark: one shape, five colours.
+ *
+ * Rarity has been a colour since Diablo, and it is the colour doing the work
+ * here, so the glyph should get out of its way. Five different medal emoji
+ * were five pictures competing to say the one thing their tint already said.
+ */
+export function rankMark(tier, size = 13) {
+  const d = DIFFICULTY[tier] || DIFFICULTY[2];
+  return `<span class="rankmark metal--${d.metal}" aria-hidden="true"` +
+    ` style="font-size:${size}px">\u25C6</span>`;
+}
 
 /**
  * Where every habit in the library stands with you.

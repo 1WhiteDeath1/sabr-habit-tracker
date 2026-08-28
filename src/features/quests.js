@@ -272,7 +272,7 @@ function trialTile(state, rec) {
     : q.state === 'tight' ? `${q.need} to go · every day counts`
     : `${q.need} to go · can miss ${q.slack}`;
   return tile({
-    act: 'trial', glyph: 'flame', k: `${tier.emoji} ${tier.label}`,
+    act: 'trial', glyph: 'flame', k: tier.label,
     title: spec.title,
     sub,
     pct: q.p.pct,
@@ -399,9 +399,8 @@ function openTrialSheet() {
           </p>
           ${pool.length ? raw(h`<div class="stack-sm">
             ${pool.map((t) => { const tier = TIERS[t.tier]; const won = timesWon(t.id, state); return raw(h`
-              <button class="trialopt toffer metal--${raw(t.tier === 'light' ? 'bronze' : t.tier === 'standard' ? 'silver' : 'gold')}"
-                      data-take="${t.id}">
-                <span class="toffer__tier">${tier.emoji}<i>${tier.days}d</i></span>
+              <button class="trialopt toffer metal--${raw(tier.metal)}" data-take="${t.id}">
+                <span class="toffer__tier metal--${raw(tier.metal)}"><b aria-hidden="true">\u25C6</b><i>${tier.days}d</i></span>
                 <span class="grow">
                   <span class="trialopt__t">${t.title}${won ? raw(h` <em class="toffer__won">won ${won}×</em>`) : raw('')}</span>
                   <span class="trialopt__d">${t.desc}</span>
@@ -452,7 +451,7 @@ function openTrialSheet() {
         </div>
 
         <div class="pdetail__terms">
-          <div class="row-between"><span>Length</span><span>${tier.emoji} ${tier.label} · ${tier.days} days</span></div>
+          <div class="row-between"><span>Length</span><span class="metal--${raw(tier.metal)}"><b class="rankmark" aria-hidden="true">◆</b> ${tier.label} · ${tier.days} days</span></div>
           <div class="row-between"><span>Reward</span><span class="pricepill">+${spec.xp} XP</span></div>
           <div class="row-between"><span>Time left</span><span>${p.met ? 'Done' : over ? 'Expired' : `${left} day${left === 1 ? '' : 's'}`}</span></div>
           <div class="row-between"><span>If you miss it</span><span>Quarter reward past halfway</span></div>
@@ -521,7 +520,7 @@ function trialRecordBlock(record) {
         ${TIER_ORDER.map((id) => { const t = record.byTier[id]; return raw(h`
           <div class="trec__tier">
             <div class="trec__head">
-              <span>${t.emoji} ${t.label}</span>
+              <span class="metal--${raw(t.metal)}"><b class="rankmark" aria-hidden="true">\u25C6</b> ${t.label}</span>
               <span class="trec__n">${t.won}/${t.total}</span>
             </div>
             <div class="trec__grid">

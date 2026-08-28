@@ -3,7 +3,8 @@
 
 import { h, raw, actions, haptic, toast, sheet, confirmSheet, qaRow } from '../ui/dom.js';
 import { slotStatus, MAX_SLOTS } from '../core/comeback.js';
-import { DIFFICULTY, DIFFICULTY_ORDER, wallet, priceTag, difficultyOf, costOf, collection } from '../core/economy.js';
+import { DIFFICULTY, DIFFICULTY_ORDER, wallet, priceTag, difficultyOf, costOf, collection,
+         rankMark } from '../core/economy.js';
 import { playerLevel } from '../core/game.js';
 import { STAKE_KINDS, describeStake, accrue, settle, startStake, stopStake } from '../core/stake.js';
 import { isOwned } from '../core/unlocks.js';
@@ -265,7 +266,7 @@ function blocked(item) {
     const d = DIFFICULTY[tier];
     const level = playerLevel(getState()).level;
     if (level < d.minLevel) {
-      toast(`${d.emoji} ${d.label} habits open at level ${d.minLevel}. You are level ${level}.`,
+      toast(`${d.label} habits open at level ${d.minLevel}. You are level ${level}.`,
         { tone: 'warn', ms: 3400 });
       sfx('deny');
       haptic([14, 60, 14]);
@@ -408,7 +409,7 @@ function renderGallery(filter) {
         return raw(h`
           <div class="tierband tier--${d.metal} ${open ? '' : 'is-shut'}">
             <div class="tierband__head">
-              <span class="tierband__e">${d.emoji}</span>
+              <span class="tierband__e">${raw(rankMark(t, 20))}</span>
               <span class="grow">
                 <span class="tierband__n">${d.label}</span>
                 <span class="tierband__b">${d.blurb}</span>
@@ -471,7 +472,7 @@ function openGalleryCard(title) {
     body: h`
       <div class="stack">
         <div class="gsheet__rank metal--${d.metal}">
-          <span>${d.emoji}</span>
+          <span>${raw(rankMark(difficultyOf(item), 17))}</span>
           <span class="grow"><strong>${d.label}</strong> · ${d.blurb}</span>
           <span class="pricepill">${d.cost} XP</span>
         </div>

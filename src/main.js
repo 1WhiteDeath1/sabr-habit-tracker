@@ -35,7 +35,7 @@ import { UNLOCKS, UNLOCK_ORDER } from './data/unlocks.js';
 // Imported, not mirrored: main.js kept its own copy of the slot thresholds,
 // so changing them in one place silently disagreed with the other.
 import { SLOT_LEVELS, slotsAtLevel } from './core/comeback.js';
-import { tierOpenedAt, DIFFICULTY, DIFFICULTY_ORDER } from './core/economy.js';
+import { tierOpenedAt, DIFFICULTY, DIFFICULTY_ORDER, rankMark } from './core/economy.js';
 import { wallet } from './core/economy.js';
 
 /* --------------------------------------------------------------- icons */
@@ -366,7 +366,7 @@ function rewardRows(level, opened, slotNow) {
   // so it goes first.
   const tier = tierOpenedAt(level);
   if (tier) {
-    rows.push(`<div class="lvrow lvrow--big"><span class="lvrow__e">${tier.emoji}</span>
+    rows.push(`<div class="lvrow lvrow--big">${rankMark(tier.id, 20)}
       <span><strong>${escapeHTML(tier.label)} habits</strong><em>A new rank in the library · ${tier.cost} XP each</em></span></div>`);
   }
   if (slotNow) {
@@ -387,7 +387,7 @@ function rewardRows(level, opened, slotNow) {
   if (!next) return '';
   return `<div class="lvrewards lvrewards--next">
     <div class="lvrewards__k">Next</div>
-    <div class="lvrow">${next.emoji ? `<span class="lvrow__e">${next.emoji}</span>` : icon(next.icon, { size: 20 })}
+    <div class="lvrow">${next.mark ? rankMark(next.mark, 20) : icon(next.icon, { size: 20 })}
       <span><strong>${escapeHTML(next.label)}</strong><em>at level ${next.level} · ${next.level - level} to go</em></span></div>
   </div>`;
 }
@@ -401,7 +401,7 @@ function nextReward(level) {
     .filter((d) => d && d.level > level)
     .sort((a, b) => a.level - b.level)[0];
   const best = [
-    tier && { level: tier.minLevel, emoji: tier.emoji, label: `${tier.label} habits` },
+    tier && { level: tier.minLevel, mark: tier.id, label: `${tier.label} habits` },
     slot && { level: slot, icon: 'sprout', label: `A ${ordinal(slotsAtLevel(slot))} habit slot` },
     mod && { level: mod.level, icon: mod.icon, label: mod.label },
   ].filter(Boolean).sort((a, b) => a.level - b.level)[0];

@@ -2090,34 +2090,34 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
   --m-bronze:   #a9713f;  --m-bronze-soft:   #f4e9df;
   --m-silver:   #8b969d;  --m-silver-soft:   #eef1f2;
   --m-gold:     #b8912f;  --m-gold-soft:     #f7efd9;
-  --m-platinum: #6f8f9e;  --m-platinum-soft: #e8eff2;
+  --m-amethyst: #7d5ba6;  --m-amethyst-soft: #efe9f6;
   --m-diamond:  #4f9cbd;  --m-diamond-soft:  #e4f1f7;
 }
 :root:not([data-theme="light"]) {
   --m-bronze:   #c98d55;  --m-bronze-soft:   #2b2119;
   --m-silver:   #a9b5bc;  --m-silver-soft:   #232b30;
   --m-gold:     #d3ab4e;  --m-gold-soft:     #2b2618;
-  --m-platinum: #8fb0c0;  --m-platinum-soft: #1e2a30;
+  --m-amethyst: #a487cf;  --m-amethyst-soft: #241d2e;
   --m-diamond:  #6cbde0;  --m-diamond-soft:  #182831;
 }
 [data-theme="dark"] {
   --m-bronze:   #c98d55;  --m-bronze-soft:   #2b2119;
   --m-silver:   #a9b5bc;  --m-silver-soft:   #232b30;
   --m-gold:     #d3ab4e;  --m-gold-soft:     #2b2618;
-  --m-platinum: #8fb0c0;  --m-platinum-soft: #1e2a30;
+  --m-amethyst: #a487cf;  --m-amethyst-soft: #241d2e;
   --m-diamond:  #6cbde0;  --m-diamond-soft:  #182831;
 }
 
 .tier--bronze   { --m: var(--m-bronze);   --m-soft: var(--m-bronze-soft); }
 .tier--silver   { --m: var(--m-silver);   --m-soft: var(--m-silver-soft); }
 .tier--gold     { --m: var(--m-gold);     --m-soft: var(--m-gold-soft); }
-.tier--platinum { --m: var(--m-platinum); --m-soft: var(--m-platinum-soft); }
+.tier--amethyst { --m: var(--m-amethyst); --m-soft: var(--m-amethyst-soft); }
 .tier--diamond  { --m: var(--m-diamond);  --m-soft: var(--m-diamond-soft); }
 
 .metal--bronze   { --m: var(--m-bronze);   --m-soft: var(--m-bronze-soft); }
 .metal--silver   { --m: var(--m-silver);   --m-soft: var(--m-silver-soft); }
 .metal--gold     { --m: var(--m-gold);     --m-soft: var(--m-gold-soft); }
-.metal--platinum { --m: var(--m-platinum); --m-soft: var(--m-platinum-soft); }
+.metal--amethyst { --m: var(--m-amethyst); --m-soft: var(--m-amethyst-soft); }
 .metal--diamond  { --m: var(--m-diamond);  --m-soft: var(--m-diamond-soft); }
 
 /* One hairline under each band header, fading out — enough to say "this is a
@@ -3143,3 +3143,40 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
   font-variant-numeric: tabular-nums;
 }
 .collkey i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+
+/* ====================================================================== */
+/* Rarity: one shape, five colours.                                       */
+/*                                                                        */
+/* Purple sits above gold because every player already knows it does. The  */
+/* mark is the same diamond at every rank, so the tint carries all of the  */
+/* meaning and no picture competes with it.                               */
+/* ====================================================================== */
+
+.rankmark { color: var(--m, var(--muted)); line-height: 1; font-style: normal; }
+
+/* The card itself is tinted by rarity rather than merely outlined, which is
+   what makes a wall of them sort at a glance. Kept to a wash: a saturated
+   fill on 39 cards would be the funk coming back. */
+.gcard {
+  border-color: color-mix(in srgb, var(--m, var(--border)) 42%, var(--border));
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--m-soft, transparent) 55%, var(--bg)), var(--bg) 72%);
+}
+.gcard__t { color: var(--text); }
+.gcard .gcard__tag { background: var(--m-soft, var(--surface-3)); color: var(--m, var(--text-2)); }
+.gcard.is-owned {
+  border-color: var(--m, var(--accent));
+  box-shadow: inset 0 0 0 1px var(--m, var(--accent));
+}
+/* Locked cards lose the colour along with everything else — the tint is a
+   promise about what you can have, and showing it on something sealed would
+   be making that promise falsely. */
+.gcard.is-locked { filter: grayscale(1); opacity: .42; }
+
+.tierband__e { display: inline-flex; align-items: center; }
+.tierband__n { color: var(--m, var(--text)); }
+
+/* the trial offer keeps the same language */
+.toffer__tier b { font-size: 1.1rem; color: var(--m, var(--muted)); line-height: 1; }
+.trec__head .metal--bronze, .trec__head .metal--silver, .trec__head .metal--gold { color: inherit; }
+.trec__head b { color: var(--m, var(--muted)); }
