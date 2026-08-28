@@ -12,9 +12,9 @@ import { todayKey, addDays, rangeKeys, daysBetween } from './dates.js';
 import { grantXp } from './game.js';
 import { isDue, statusOf } from './habits.js';
 import { keptOn } from './streak.js';
-import { TRIALS, TRIAL_BY_ID, TRIAL_DAYS } from '../data/trials.js';
+import { TRIALS, TRIAL_BY_ID, TRIAL_DAYS, TIERS, TIER_ORDER, daysOf } from '../data/trials.js';
 
-export { TRIALS, TRIAL_BY_ID, TRIAL_DAYS };
+export { TRIALS, TRIAL_BY_ID, TRIAL_DAYS, TIERS, TIER_ORDER, daysOf };
 
 /** Anything short of the target but at or above this still pays something. */
 const PARTIAL_AT = 0.5;
@@ -130,15 +130,19 @@ export function isExpired(rec) {
   return todayKey() > rec.to;
 }
 
-/**
- * Which trials can be offered right now.
- *
- * Filtered by what is actually switched on and, for the habit-matching ones,
- * by whether you hold a habit that could satisfy them — offering "Seven Dawns"
- * to somebody with no Fajr habit is offering a trial that cannot be started.
- */
-export function offered(state = getState()) {
-  const recent = new Set((state.game.trialHistory || []).slice(-3).map((h) => h.id));
+/** Has this trial ever been won? Escalation and the record both need it. */
+export function hasWon(id, state = getState()) {
+  return (state.game.trialHistory || []).some((h) => h.id === id && h.outcome === 'won');
+}
+
+/** How many times, for the record. */
+export function timesWon(id, state = getState()) {
+  return (state.game.trialHistory || []).filter((h) => h.id === id && h.outcome === 'won').length;
+}
+
+/** Everything currently possible to take. */
+export function available(state = getState()) {
+  const recent = new Set((state.game.trialHistory || []).slice(-2).map((h) => h.id));
   return TRIALS.filter((t) => {
     if (t.needs === 'academics' && !state.academics.enabled) return false;
     if (t.needs === 'recovery' && !state.recovery.enabled) return false;
@@ -149,15 +153,41 @@ export function offered(state = getState()) {
         && (normalize(hab.title).includes(t.args.match) || normalize(hab.tiny).includes(t.args.match)));
       if (!has) return false;
     }
+    // A fortnight is only offered once its week has been held, so the long
+    // version of something is never the first thing you try and fail.
+    if (t.requires && !hasWon(t.requires, state)) return false;
     return !recent.has(t.id);
   });
+}
+
+/**
+ * What to put in front of you: the best one from each tier.
+ *
+ * One of each rather than three of whatever, so the choice is always "how much
+ * am I taking on" and never "which of three identical weeks". Within a tier
+ * something never won outranks a repeat, because the collection is worth
+ * filling before it is worth farming.
+ */
+export function offered(state = getState()) {
+  const pool = available(state);
+  const out = [];
+  for (const tier of TIER_ORDER) {
+    const inTier = pool.filter((t) => t.tier === tier);
+    if (!inTier.length) continue;
+    const fresh = inTier.filter((t) => !hasWon(t.id, state));
+    const from = fresh.length ? fresh : inTier;
+    // Stable per day, so the offer does not reshuffle while you look at it.
+    const seed = Number(todayKey().replace(/-/g, '')) % from.length;
+    out.push(from[seed]);
+  }
+  return out;
 }
 
 export function acceptTrial(id) {
   const spec = TRIAL_BY_ID[id];
   if (!spec || activeTrial()) return null;
   const from = todayKey();
-  const rec = { id, from, to: addDays(from, TRIAL_DAYS - 1), acceptedAt: Date.now(), settled: false };
+  const rec = { id, from, to: addDays(from, daysOf(spec) - 1), acceptedAt: Date.now(), settled: false };
   mutate((s) => { s.game.trial = rec; });
   return rec;
 }
@@ -202,6 +232,48 @@ export function settleTrial() {
   return { outcome, xp, value: p.raw, target: p.target, spec };
 }
 
+/**
+ * Am I still on for this, and how much slack is left?
+ *
+ * The most important number in the mechanic and the one most apps never show.
+ * A seven-day trial needing six is a trial you can miss one day of, and
+ * knowing that is the whole difference between a bad Tuesday and quitting on
+ * Tuesday. When the full mark does go out of reach this says so plainly and
+ * points at the partial, rather than letting the thing rot silently for
+ * another nine days.
+ */
+export function pace(rec, state = getState()) {
+  const p = trialProgress(rec, state);
+  const today = todayKey();
+  const left = Math.max(0, daysBetween(today, rec.to) + 1);   // today included
+  const need = Math.max(0, p.target - p.raw);
+  const slack = left - need;
+
+  if (p.met) return { state: 'won', left, need: 0, slack, p };
+  if (today > rec.to) return { state: 'over', left: 0, need, slack, p };
+  if (slack < 0) return { state: 'shortfall', left, need, slack, p };
+  return { state: slack === 0 ? 'tight' : 'ok', left, need, slack, p };
+}
+
+/** One line of plain English for whatever pace() worked out. */
+export function paceLine(rec, state = getState()) {
+  const q = pace(rec, state);
+  const d = (n) => n + ' day' + (n === 1 ? '' : 's');
+  switch (q.state) {
+    case 'won':
+      return 'Held. Claim it.';
+    case 'over':
+      return 'The window has closed.';
+    case 'shortfall':
+      return 'The full mark is out of reach, but ' + q.p.raw + ' of ' + q.p.target
+        + ' still pays a quarter and every day you add is on the record either way.';
+    case 'tight':
+      return d(q.need) + ' left to earn and ' + d(q.left) + ' to do it in. Every one counts from here.';
+    default:
+      return d(q.need) + ' to go, ' + d(q.left) + ' left. You can still miss ' + d(q.slack) + '.';
+  }
+}
+
 /** A finished trial waiting to be closed out — won early, or the week is over. */
 export function trialDue(state = getState()) {
   const rec = activeTrial(state);
@@ -210,11 +282,37 @@ export function trialDue(state = getState()) {
   return p.met || isExpired(rec) ? { rec, progress: p, spec: TRIAL_BY_ID[rec.id] } : null;
 }
 
+/**
+ * The collection.
+ *
+ * Only wins score. Attempts that fell short stay in the history and read as
+ * "held partway" rather than as losses, because the promise of the whole
+ * mechanic is that choosing to try something costs nothing when it does not
+ * come off.
+ */
 export function trialRecord(state = getState()) {
   const h = state.game.trialHistory || [];
+  const won = h.filter((x) => x.outcome === 'won');
+  const byTier = {};
+  for (const tier of TIER_ORDER) {
+    const all = TRIALS.filter((t) => t.tier === tier);
+    byTier[tier] = {
+      ...TIERS[tier],
+      total: all.length,
+      won: all.filter((t) => hasWon(t.id, state)).length,
+      trials: all.map((t) => ({
+        ...t,
+        wins: timesWon(t.id, state),
+        locked: !!(t.requires && !hasWon(t.requires, state)),
+      })),
+    };
+  }
   return {
-    won: h.filter((x) => x.outcome === 'won').length,
+    won: won.length,
     attempted: h.length,
-    history: h,
+    xp: won.reduce((n, x) => n + (Number(x.xp) || 0), 0),
+    distinct: new Set(won.map((x) => x.id)).size,
+    byTier,
+    history: h.slice().reverse(),
   };
 }

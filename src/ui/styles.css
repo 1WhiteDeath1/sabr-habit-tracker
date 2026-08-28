@@ -3016,3 +3016,90 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
   .ready { animation: none; }
   .crestbar__fill { transition: none; }
 }
+
+/* ====================================================================== */
+/* Trials — three tiers, the slack, and the shelf.                        */
+/* ====================================================================== */
+
+.toffer { align-items: stretch; gap: 12px; }
+.toffer__tier {
+  flex: none; width: 42px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  border-radius: var(--r-sm); padding: 6px 0;
+  background: var(--m-soft, var(--surface-3));
+  font-size: 1.15rem; line-height: 1;
+}
+.toffer__tier i {
+  font-style: normal; font-size: .6rem; font-weight: 850;
+  letter-spacing: .04em; color: var(--m, var(--muted));
+  font-variant-numeric: tabular-nums;
+}
+.toffer__won {
+  font-style: normal; font-size: .64rem; font-weight: 850;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent-edge); margin-left: 5px;
+}
+[data-theme="dark"] .toffer__won { color: var(--accent); }
+
+/* ---- how much room is left ---- */
+/* The one line that decides whether a bad Tuesday ends a trial. */
+
+.paceline {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 11px 13px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-size: .84rem; font-weight: 650; line-height: 1.5; color: var(--text-2);
+}
+.paceline .ico { flex: none; margin-top: 1px; color: var(--muted); }
+.paceline--ok { border-color: var(--accent); }
+.paceline--ok .ico { color: var(--accent); }
+.paceline--tight { border-color: var(--gold); }
+.paceline--tight .ico { color: var(--gold); }
+/* Not red. Falling short of the full mark is not an error state, and colouring
+   it like one would be the app calling a bad week a failure. */
+.paceline--shortfall { border-style: dashed; }
+.paceline--won { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+[data-theme="dark"] .paceline--won { background: var(--surface-2); }
+.paceline--won .ico { color: var(--accent); }
+
+/* ---- the shelf ---- */
+
+.trec { margin: 0; }
+.trec > summary {
+  display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none;
+  padding: 12px 14px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-size: .86rem; font-weight: 750;
+}
+.trec > summary::-webkit-details-marker { display: none; }
+.trec__score {
+  font-size: .76rem; font-weight: 850; color: var(--gold-edge);
+  font-variant-numeric: tabular-nums;
+}
+[data-theme="dark"] .trec__score { color: var(--gold); }
+.trec__body { padding: 14px 3px 0; }
+.trec__tier + .trec__tier { margin-top: 14px; }
+.trec__head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: .8rem; font-weight: 750; margin-bottom: 7px;
+}
+.trec__n {
+  font-size: .74rem; font-weight: 850; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.trec__grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.trec__pip {
+  width: 26px; height: 26px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: var(--surface-3); border: 1px solid var(--border);
+}
+.trec__pip.is-won { background: var(--gold); border-color: var(--gold-edge); }
+.trec__pip.is-locked { opacity: .4; border-style: dashed; }
+.trec__pip i {
+  font-style: normal; font-size: .64rem; font-weight: 900; color: #4a3800;
+  font-variant-numeric: tabular-nums;
+}
+.trec__note {
+  margin: 13px 0 0; font-size: .76rem; line-height: 1.55;
+  font-weight: 600; color: var(--muted);
+}

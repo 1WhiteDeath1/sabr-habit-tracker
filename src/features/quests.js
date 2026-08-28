@@ -8,7 +8,8 @@
 import { h, raw, actions, haptic, toast, xpBurst, sheet, confirmSheet, bar, qaRow } from '../ui/dom.js';
 import { getState } from '../core/store.js';
 import { activeTrial, offered, acceptTrial, abandonTrial, settleTrial,
-         trialProgress, daysLeft, isExpired, TRIAL_BY_ID } from '../core/trials.js';
+         trialProgress, daysLeft, isExpired, TRIAL_BY_ID, TIERS, TIER_ORDER,
+         pace, paceLine, trialRecord, hasWon, timesWon } from '../core/trials.js';
 import { confetti } from '../ui/confetti.js';
 import { todaysMove } from '../core/links.js';
 import { nextGate, ascend as doAscend, ladder } from '../core/ascend.js';
@@ -249,22 +250,34 @@ function objectiveBoard(state) {
 
 function trialTile(state, rec) {
   if (!rec) {
-    const n = offered(state).length;
+    const pool = offered(state);
+    const rec2 = trialRecord(state);
     return tile({
-      act: 'trial', glyph: 'flame', k: 'Trial', title: 'None taken',
-      sub: n ? `${n} on offer` : 'None available yet', pct: 0, tone: 'is-empty',
+      act: 'trial', glyph: 'flame', k: 'Trial',
+      title: pool.length ? 'None taken' : 'None available',
+      sub: pool.length
+        ? `${pool.length} on offer · ${rec2.won} won`
+        : 'Hold a habit one can measure',
+      pct: 0, tone: 'is-empty',
     });
   }
   const spec = TRIAL_BY_ID[rec.id];
-  const pr = trialProgress(rec, state);
-  const left = daysLeft(rec);
+  const q = pace(rec, state);
+  const tier = TIERS[spec.tier] || TIERS.standard;
+  // The tile carries the slack rather than the day count, because "you can
+  // still miss two" is the fact that decides whether a bad Tuesday ends this.
+  const sub = q.state === 'won' ? 'Held — claim it'
+    : q.state === 'over' ? 'Window closed'
+    : q.state === 'shortfall' ? `${q.p.raw} of ${q.p.target} · partial still live`
+    : q.state === 'tight' ? `${q.need} to go · every day counts`
+    : `${q.need} to go · can miss ${q.slack}`;
   return tile({
-    act: 'trial', glyph: 'flame', k: 'Trial',
+    act: 'trial', glyph: 'flame', k: `${tier.emoji} ${tier.label}`,
     title: spec.title,
-    sub: pr.met ? 'Complete — claim it' : `${pr.raw} of ${pr.target} · ${left}d left`,
-    pct: pr.pct,
-    tone: pr.met ? 'is-ready' : left <= 2 ? 'is-close' : '',
-    badge: pr.met ? `+${spec.xp}` : '',
+    sub,
+    pct: q.p.pct,
+    tone: q.state === 'won' ? 'is-ready' : (q.state === 'tight' || q.state === 'shortfall') ? 'is-close' : '',
+    badge: q.state === 'won' ? `+${spec.xp}` : '',
   });
 }
 
@@ -373,29 +386,34 @@ function openTrialSheet() {
   const rec = activeTrial(state);
 
   if (!rec) {
-    const pool = offered(state).slice(0, 3);
+    const pool = offered(state);
+    const record = trialRecord(state);
     sheet({
       title: 'Take a trial',
       body: h`
         <div class="stack">
           <p class="prose" style="margin:0">
-            Seven days, one at a time, and you can decline. It is the only thing in this app you
-            are able to fail — which is the only reason finishing one means anything. Stepping
-            away costs nothing and is not recorded as a loss.
+            One at a time, and you can decline. It is the only thing in this app you are able to
+            fail — which is the only reason finishing one means anything. Stepping away costs
+            nothing and is never recorded as a loss.
           </p>
           ${pool.length ? raw(h`<div class="stack-sm">
-            ${pool.map((t) => raw(h`
-              <button class="trialopt" data-take="${t.id}">
+            ${pool.map((t) => { const tier = TIERS[t.tier]; const won = timesWon(t.id, state); return raw(h`
+              <button class="trialopt toffer metal--${raw(t.tier === 'light' ? 'bronze' : t.tier === 'standard' ? 'silver' : 'gold')}"
+                      data-take="${t.id}">
+                <span class="toffer__tier">${tier.emoji}<i>${tier.days}d</i></span>
                 <span class="grow">
-                  <span class="trialopt__t">${t.title}</span>
+                  <span class="trialopt__t">${t.title}${won ? raw(h` <em class="toffer__won">won ${won}×</em>`) : raw('')}</span>
                   <span class="trialopt__d">${t.desc}</span>
                   ${raw((() => { const m = todaysMove(t.metric, t.args || {}, state);
                     return m ? h`<span class="trialopt__on">${m}</span>` : ''; })())}
                 </span>
                 <span class="pricepill">+${t.xp}</span>
-              </button>`))}
+              </button>`); })}
           </div>`) : raw(h`<p class="muted" style="margin:0">
             Nothing on offer yet — trials appear once you hold habits they can measure.</p>`)}
+
+          ${record.attempted ? raw(trialRecordBlock(record)) : raw('')}
         </div>`,
       onMount: (el, close) => {
         el.addEventListener('click', (ev) => {
@@ -413,9 +431,11 @@ function openTrialSheet() {
 
   const spec = TRIAL_BY_ID[rec.id];
   const p = trialProgress(rec, state);
+  const q = pace(rec, state);
   const left = daysLeft(rec);
   const over = isExpired(rec);
   const move = todaysMove(spec.metric, spec.args || {}, state);
+  const tier = TIERS[spec.tier] || TIERS.standard;
 
   sheet({
     title: spec.title,
@@ -426,10 +446,17 @@ function openTrialSheet() {
           <div class="trial__bar"><i style="width:${(p.pct * 100).toFixed(1)}%"></i></div>
           <span class="trial__n">${p.raw} / ${p.target}</span>
         </div>
+        <div class="paceline paceline--${raw(q.state)}">
+          ${icon(q.state === 'won' ? 'checkCircle' : q.state === 'shortfall' ? 'half' : 'clock', { size: 15 })}
+          <span>${paceLine(rec, state)}</span>
+        </div>
+
         <div class="pdetail__terms">
+          <div class="row-between"><span>Length</span><span>${tier.emoji} ${tier.label} · ${tier.days} days</span></div>
           <div class="row-between"><span>Reward</span><span class="pricepill">+${spec.xp} XP</span></div>
           <div class="row-between"><span>Time left</span><span>${p.met ? 'Done' : over ? 'Expired' : `${left} day${left === 1 ? '' : 's'}`}</span></div>
           <div class="row-between"><span>If you miss it</span><span>Quarter reward past halfway</span></div>
+          <div class="row-between"><span>If you step away</span><span>Nothing, ever</span></div>
         </div>
         ${move ? raw(h`<a class="doneon" href="#/today">
           ${icon('pointer', { size: 13 })}<span class="grow">${move}</span><span>on Today</span></a>`) : raw('')}
@@ -471,6 +498,47 @@ function reportTrial(res, el) {
     haptic(10);
     toast(`${res.value} of ${res.target}. Nothing lost — the days still count on your record.`, { ms: 3800 });
   }
+}
+
+/**
+ * The collection.
+ *
+ * Wins only, grouped by tier, because a shelf of things you chose to do and
+ * did is the reward this mechanic is actually paying out. Attempts that fell
+ * short appear as "held partway" and never as failures — the promise is that
+ * trying costs nothing, and a record that counted losses would quietly break
+ * it.
+ */
+function trialRecordBlock(record) {
+  return h`
+    <details class="trec">
+      <summary>
+        <span class="grow">Your record</span>
+        <span class="trec__score">${record.won} won \u00b7 ${record.xp.toLocaleString()} XP</span>
+        <i class="qa__mark" aria-hidden="true">?</i>
+      </summary>
+      <div class="trec__body">
+        ${TIER_ORDER.map((id) => { const t = record.byTier[id]; return raw(h`
+          <div class="trec__tier">
+            <div class="trec__head">
+              <span>${t.emoji} ${t.label}</span>
+              <span class="trec__n">${t.won}/${t.total}</span>
+            </div>
+            <div class="trec__grid">
+              ${t.trials.map((x) => raw(h`
+                <span class="trec__pip ${x.wins ? 'is-won' : x.locked ? 'is-locked' : ''}"
+                      title="${x.title}${x.wins ? ` \u2014 won ${x.wins}\u00d7` : x.locked ? ' \u2014 win the seven-day one first' : ''}">
+                  ${x.wins > 1 ? raw(h`<i>${x.wins}</i>`) : raw('')}
+                </span>`))}
+            </div>
+          </div>`); })}
+        ${record.attempted > record.won ? raw(h`
+          <p class="trec__note">
+            ${record.attempted - record.won} held partway. Those are not losses and are not
+            counted as any \u2014 they are days you did that you would not otherwise have done.
+          </p>`) : raw('')}
+      </div>
+    </details>`;
 }
 
 /** Choosing what to push on. */
