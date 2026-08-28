@@ -12,6 +12,7 @@ import { todaysOffers, sideStatus, acceptSide, completeSide } from '../core/ques
 import { themeOf } from '../data/quests.js';
 import { comboMultiplier } from '../core/game.js';
 import { isOwned } from '../core/unlocks.js';
+import { gateCard, gateMount } from '../ui/gate.js';
 import { recoveryStats } from '../core/recovery.js';
 import { habitRow, passageCard, dayRing, timeGroup, evidenceCard, attrColorFor, sideQuestCard } from '../ui/widgets.js';
 import { refresh, go } from '../core/router.js';
@@ -117,7 +118,9 @@ export const todayScreen = {
           ${due ? raw(milestoneCard(due)) : raw('')}
           ${raw(streakCard(state))}
 
-          ${offers.length ? raw(bulletinBoard(state, offers)) : raw('')}
+          ${offers.length ? raw(bulletinBoard(state, offers))
+             : isOwned('sidequests', state) ? raw('')
+             : raw(gateCard('sidequests'))}
 
           ${risky.length ? raw(riskCard(risky)) : raw('')}
           ${state.academics.enabled ? raw(attendanceBlock(state)) : raw('')}
@@ -143,6 +146,9 @@ export const todayScreen = {
   },
 
   mount(root) {
+    // The board carries a gate card until side quests are bought, and that
+    // card's button binds itself rather than going through actions().
+    gateMount(root);
     actions(root, {
       claimms: (el, ds) => {
         const m = claimMilestone(Number(ds.d));

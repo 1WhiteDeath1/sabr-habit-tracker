@@ -7,7 +7,7 @@
  * exception, and the app must open on a phone in flight mode at 5am.
  */
 
-const VERSION = 'sabr-v41';
+const VERSION = 'sabr-v42';
 const SHELL = [
   './',
   './index.html',

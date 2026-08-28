@@ -49,7 +49,9 @@ export const UNLOCKS = {
     icon: 'map',
     level: 2,
     cost: 30,
-    href: '#/quests',
+    // The board lives on Today, not Quests. This still said '#/quests' after
+    // the move, which sent anyone who bought it to a screen it is not on.
+    href: '#/today',
     blurb: 'Three optional missions a day, rerolled every morning.',
     why: 'Small, self-contained wins on days when the habits themselves feel like too much. Ignoring one has never cost anything and never will.',
     // What the screen says when this is off, in place of the feature.

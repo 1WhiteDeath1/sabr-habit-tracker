@@ -13,7 +13,7 @@ import { wallet, DIFFICULTY, difficultyOf, costOf } from '../core/economy.js';
 import { allUnlockStatuses, buyUnlock, sellUnlock, unlockStatus } from '../core/unlocks.js';
 import { ALWAYS_FREE } from '../data/unlocks.js';
 import { slotStatus } from '../core/comeback.js';
-import { levelFromXp } from '../core/game.js';
+import { playerLevel } from '../core/game.js';
 import { CATEGORIES } from '../core/schema.js';
 import { icon } from '../ui/icons.js';
 import { refresh, go } from '../core/router.js';
