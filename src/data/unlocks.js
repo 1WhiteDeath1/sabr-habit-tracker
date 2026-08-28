@@ -122,6 +122,10 @@ export const ALWAYS_FREE = [
   // who needs the 80% line watched needs it in week one, not at level 7. It
   // earns XP now instead of costing it — see UNI_XP in core/academics.js.
   { label: 'University: attendance, deadlines and GPA', icon: 'cap' },
+  // Same reasoning as University: a body that has not moved in a year needs
+  // the wall push-up in week one, not at level 5. It earns XP rather than
+  // costing it — see TRAIN_XP in core/training.js.
+  { label: 'Reps: the movement ladders and every record on them', icon: 'jasad' },
   { label: 'The honesty ledger', icon: 'ledger' },
   { label: 'The main quest line', icon: 'trophy' },
   { label: 'Every record, streak and analytic', icon: 'chart' },

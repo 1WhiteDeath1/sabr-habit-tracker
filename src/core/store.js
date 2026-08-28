@@ -2,7 +2,7 @@
 // Nothing else touches localStorage. Views read via `state`, write via `mutate`,
 // and re-render because they subscribed. That is the whole contract.
 
-import { defaultState, SCHEMA_VERSION, STORAGE_KEY, makeProfile, makeSettings, makeRecovery, makeGame, makeLedger, makeAcademics } from './schema.js';
+import { defaultState, SCHEMA_VERSION, STORAGE_KEY, makeProfile, makeSettings, makeRecovery, makeGame, makeLedger, makeAcademics, makeTraining } from './schema.js';
 
 let state = defaultState();
 const listeners = new Set();
@@ -63,6 +63,10 @@ function reconcile(s) {
   out.logs    = (s.logs    && typeof s.logs    === 'object') ? s.logs    : {};
   out.journal = (s.journal && typeof s.journal === 'object') ? s.journal : {};
   out.focus   = { sessions: [], tasks: [], ...(s.focus || {}) };
+  out.training = { ...makeTraining(), ...(s.training || {}) };
+  out.training.plan     = Array.isArray(s.training?.plan) ? s.training.plan : [];
+  out.training.declined = Array.isArray(s.training?.declined) ? s.training.declined : [];
+  out.training.log      = (s.training?.log && typeof s.training.log === 'object') ? s.training.log : {};
   return out;
 }
 

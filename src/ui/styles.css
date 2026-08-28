@@ -3333,3 +3333,178 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
   font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
   color: var(--muted);
 }
+
+/* ============================================================================
+   Reps — the indoor training screen (features/reps.js)
+
+   Orange throughout, because that is the Body category's colour everywhere
+   else in the app and this screen is Body made into a place. Deliberately no
+   red anywhere in here: nothing on this screen is ever a failure state.
+   ========================================================================== */
+
+.trhead { border-color: var(--orange); background: var(--orange-soft); }
+[data-theme="dark"] .trhead { background: var(--surface-2); }
+.trhead__n {
+  font-size: 2.4rem; font-weight: 900; line-height: 1;
+  font-variant-numeric: tabular-nums; color: var(--orange);
+}
+.trhead__of { font-size: 1.1rem; font-weight: 800; color: var(--text-2); }
+.trhead__l {
+  font-size: .68rem; font-weight: 850; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--muted); margin-top: 4px;
+}
+.trhead__pts { text-align: right; }
+.trhead__ptsn { font-size: 1.5rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1; }
+.trhead__ptsl {
+  font-size: .64rem; font-weight: 850; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--muted); margin-top: 4px;
+}
+.trhead__foot { margin-top: 10px; font-size: .82rem; font-weight: 650; color: var(--text-2); line-height: 1.45; }
+.trtrend {
+  display: flex; align-items: center; gap: 7px; margin-top: 11px;
+  padding-top: 10px; border-top: 1px solid var(--border);
+  font-size: .82rem; font-weight: 800;
+}
+.trtrend--up { color: var(--green); }
+.trtrend--flat { color: var(--text-2); }
+.trtrend--flat .ico { transform: rotate(90deg); }
+
+/* ---- one movement in the round ---- */
+
+.trmove {
+  display: flex; align-items: stretch; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); box-shadow: 0 var(--lift) 0 var(--border);
+  overflow: hidden;
+}
+.trmove + .trmove { margin-top: 10px; }
+.trmove.is-done { border-color: var(--orange); }
+.trmove__body {
+  display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;
+  padding: 12px 4px 12px 14px; background: none; border: 0;
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.trmove__e { font-size: 1.6rem; flex: none; line-height: 1; }
+.trmove__t { display: block; font-weight: 800; font-size: .97rem; }
+.trmove__s { display: block; font-size: .76rem; font-weight: 650; color: var(--muted); margin-top: 2px; }
+
+.trpips { display: flex; align-items: center; gap: 4px; margin-top: 7px; min-height: 9px; }
+.trpip {
+  width: 9px; height: 9px; border-radius: 50%; flex: none;
+  background: var(--border-str);
+}
+.trpip.is-on { background: var(--orange); }
+.trpips__n { font-size: .78rem; font-weight: 850; color: var(--orange); }
+.trpips__tot { font-size: .72rem; font-weight: 700; color: var(--muted); margin-left: 5px; }
+
+.trmove__log {
+  flex: none; width: 66px; border: 0; border-left: 1px solid var(--border);
+  background: var(--orange-soft); color: var(--orange-edge);
+  display: grid; place-content: center; gap: 1px; cursor: pointer;
+  font: inherit; transition: transform .06s linear, background .15s;
+}
+[data-theme="dark"] .trmove__log { background: var(--surface-3); color: var(--orange); }
+.trmove__log:active { transform: scale(.94); }
+.trmove__logn { font-size: 1.3rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.trmove__logu { font-size: .58rem; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; opacity: .8; }
+.trmove__undo {
+  flex: none; width: 34px; border: 0; border-left: 1px solid var(--border);
+  background: var(--surface-2); color: var(--muted); cursor: pointer;
+  display: grid; place-content: center;
+}
+.trmove__steps { display: flex; align-items: center; gap: 6px; padding-right: 10px; }
+.trstepbtn {
+  width: 34px; height: 34px; border-radius: 50%; flex: none; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-2); font: inherit; font-weight: 900; font-size: 1rem;
+  display: grid; place-content: center;
+}
+.trstepbtn:active { transform: translateY(1px); }
+
+/* ---- the three-week chart ---- */
+
+.trbars {
+  display: grid; grid-template-columns: repeat(21, minmax(0, 1fr));
+  gap: 3px; align-items: end; height: 92px; margin-top: 14px;
+}
+.trbar__col { height: 100%; display: flex; align-items: flex-end; }
+.trbar {
+  width: 100%; border-radius: 3px 3px 1px 1px;
+  background: var(--orange); opacity: .5;
+  transition: height .3s var(--ease);
+}
+.trbar__col.is-now .trbar { opacity: 1; }
+/* A day off is a flat tick, never a gap and never red. */
+.trbar__col.is-rest .trbar { background: var(--border-str); opacity: 1; }
+
+/* ---- ladders ---- */
+
+.trladder + .trladder { margin-top: 10px; }
+.trladder__head {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  background: none; border: 0; font: inherit; color: inherit;
+  text-align: left; cursor: pointer; padding: 0;
+}
+.trrungs { display: flex; gap: 5px; margin: 13px 0 10px; }
+.trrung {
+  flex: 1; height: 7px; border-radius: 999px; background: var(--surface-3);
+}
+.trrung.is-past { background: var(--orange); opacity: .45; }
+.trrung.is-here { background: var(--orange); }
+.trladder__foot { font-size: .78rem; font-weight: 650; color: var(--muted); line-height: 1.45; }
+
+.trstep .card__title { color: var(--gold-edge); }
+
+/* ---- routine picker and the rung list in the sheet ---- */
+
+.trroutine { align-items: flex-start; text-align: left; }
+.trroutine__t { display: block; font-weight: 800; font-size: 1rem; }
+.trroutine__s { display: block; font-size: .82rem; font-weight: 700; color: var(--orange); margin-top: 2px; }
+.trroutine__b { display: block; font-size: .8rem; font-weight: 500; color: var(--text-2); margin-top: 6px; line-height: 1.5; }
+.trroutine__g {
+  display: block; font-size: .7rem; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--muted); margin-top: 7px;
+}
+
+.trgear {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+  font-size: .74rem; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+.trpick {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; margin-bottom: 10px;
+  padding: 13px 14px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); box-shadow: 0 var(--lift) 0 var(--border);
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.trpick.is-here { border-color: var(--orange); background: var(--orange-soft); }
+[data-theme="dark"] .trpick.is-here { background: var(--surface-2); }
+.trpick__i {
+  width: 26px; height: 26px; border-radius: 50%; flex: none;
+  display: grid; place-content: center; background: var(--surface-3);
+  font-size: .78rem; font-weight: 900; color: var(--text-2);
+}
+.trpick.is-here .trpick__i { background: var(--orange); color: #fff; }
+.trpick__t { display: block; font-weight: 800; font-size: .94rem; }
+.trpick__s { display: block; font-size: .74rem; font-weight: 700; color: var(--muted); margin-top: 3px; }
+.trpick__c { display: block; font-size: .78rem; font-weight: 500; color: var(--text-2); margin-top: 6px; line-height: 1.45; }
+.trpick__b {
+  flex: none; font-size: .68rem; font-weight: 850; color: var(--orange);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+
+/* ---- the row on Today ---- */
+
+.trtoday {
+  display: block; border-color: var(--border); cursor: pointer;
+  box-shadow: 0 var(--lift) 0 var(--border); padding: 13px 15px;
+}
+.trtoday:active { transform: translateY(var(--lift)); box-shadow: 0 0 0 var(--border); }
+.trtoday.is-started { border-color: var(--orange); }
+.trtoday__k {
+  display: flex; align-items: center; gap: 6px; font-size: .68rem; font-weight: 850;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--orange);
+}
+.trtoday__t { display: block; font-weight: 800; font-size: .93rem; margin-top: 5px; }
+.trtoday__s { display: block; font-size: .78rem; font-weight: 650; color: var(--muted); margin-top: 3px; }
