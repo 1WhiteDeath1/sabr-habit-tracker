@@ -226,12 +226,18 @@ function paintTopbar(route) {
   const run = streakNow(state);
   const alerts = badgeCount(state);
 
+  // The two chips that go somewhere are drawn as pills with a chevron; the
+  // level, which is a read-out and nothing else, stays flat text. Before this
+  // all three looked identical, so the one control that opens the wallet was
+  // indistinguishable from the number sitting next to it and nobody tapped it.
   bar.innerHTML = `
-    <button class="tb tb--xp${w.balance ? '' : ' is-zero'}" data-vault
-            title="${w.balance} XP free of ${w.earned} earned — open the wallet">${ICON.bolt}${w.balance}</button>
+    <button class="tb tb--tap tb--xp${w.balance ? '' : ' is-zero'}" data-vault
+            aria-label="Open the wallet — ${w.balance} XP free"
+            title="${w.balance} XP free of ${w.earned} earned — open the wallet">${ICON.bolt}${w.balance}<i class="tb__go" aria-hidden="true">›</i></button>
     <div class="tb tb--level" title="Level">${ICON.star}${lv.level}</div>
-    <button class="tb tb--streak${run ? '' : ' is-cold'}" data-streak
-            title="${run} day run — your record is on Today">${icon('flame', { size: 17 })}${run}</button>
+    <button class="tb tb--tap tb--streak${run ? '' : ' is-cold'}" data-streak
+            aria-label="${run} day run — open Today"
+            title="${run} day run — your record is on Today">${icon('flame', { size: 17 })}${run}<i class="tb__go" aria-hidden="true">›</i></button>
     <button class="tb tb--bell${alerts ? ' has-alerts' : ''}" data-bell aria-label="What is coming up">
       ${icon(alerts ? 'bell' : 'bellOff', { size: 23 })}
       ${alerts ? `<span class="tb__badge">${alerts > 9 ? '9+' : alerts}</span>` : ''}

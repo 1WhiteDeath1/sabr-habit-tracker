@@ -113,21 +113,28 @@ export const UNLOCKS = {
 
 export const UNLOCK_ORDER = ['sidequests', 'focus', 'night', 'stake', 'voice'];
 
-/** Never for sale, and listed in the Vault so the boundary is visible. */
+/**
+ * Never for sale, and listed in the Vault so the boundary is visible.
+ *
+ * `href` where there is a screen to go to. The list was eight dead lines saying
+ * a free thing exists; a free thing you cannot reach from the place that names
+ * it is a claim rather than a feature, and Reps in particular had exactly one
+ * way in, buried on Today.
+ */
 export const ALWAYS_FREE = [
-  { label: 'Today, and every habit you hold', icon: 'check' },
-  { label: 'Shield, the SOS screen and urge logging', icon: 'shield' },
+  { label: 'Today, and every habit you hold', icon: 'check', href: '#/today' },
+  { label: 'Shield, the SOS screen and urge logging', icon: 'shield', href: '#/shield' },
   // University sat on the shelf at level 7 for exactly one revision. It was the
   // wrong call: attendance is a deadline you cannot renegotiate, and a student
   // who needs the 80% line watched needs it in week one, not at level 7. It
   // earns XP now instead of costing it — see UNI_XP in core/academics.js.
-  { label: 'University: attendance, deadlines and GPA', icon: 'cap' },
+  { label: 'University: attendance, deadlines and GPA', icon: 'cap', href: '#/uni' },
   // Same reasoning as University: a body that has not moved in a year needs
   // the wall push-up in week one, not at level 5. It earns XP rather than
   // costing it — see TRAIN_XP in core/training.js.
-  { label: 'Reps: the movement ladders and every record on them', icon: 'jasad' },
-  { label: 'The honesty ledger', icon: 'ledger' },
-  { label: 'The main quest line', icon: 'trophy' },
-  { label: 'Every record, streak and analytic', icon: 'chart' },
+  { label: 'Reps: the movement ladders and every record on them', icon: 'jasad', href: '#/reps' },
+  { label: 'The honesty ledger', icon: 'ledger', href: '#/ledger' },
+  { label: 'The main quest line', icon: 'trophy', href: '#/quests' },
+  { label: 'Every record, streak and analytic', icon: 'chart', href: '#/me/records' },
   { label: 'The return protocol, after days away', icon: 'sprout' },
 ];

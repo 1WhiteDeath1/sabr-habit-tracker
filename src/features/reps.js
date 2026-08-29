@@ -12,7 +12,7 @@
 import { h, raw, actions, haptic, toast, xpBurst, sheet, bar, qaRow, confirmSheet } from '../ui/dom.js';
 import { getState } from '../core/store.js';
 import { icon } from '../ui/icons.js';
-import { refresh } from '../core/router.js';
+import { refresh, go } from '../core/router.js';
 import { sfx } from '../core/audio.js';
 import { confetti } from '../ui/confetti.js';
 import { evidenceCard } from '../ui/widgets.js';
@@ -156,12 +156,12 @@ export const repsScreen = {
     return h`
       <div class="screen">
         <header class="screen__head screen__head--tight">
-          <a href="#/today" class="muted" style="font-size:.85rem">‹ Today</a>
-          <div class="row-between" style="margin-top:8px">
-            <div>
-              <div class="eyebrow">Reps</div>
-              <h1 style="margin:0">Your round</h1>
-            </div>
+          <div class="row-between" style="margin-bottom:2px">
+            <div class="eyebrow">Reps</div>
+            <button class="backbtn" data-act="back">‹ Back</button>
+          </div>
+          <div class="row-between">
+            <h1 style="margin:0">Your round</h1>
             <button class="btn btn--ghost btn--sm" data-act="edit">Edit</button>
           </div>
         </header>
@@ -182,6 +182,9 @@ export const repsScreen = {
             open ${solo ? 'the' : 'a'} row to type what you actually did.
           </p>
 
+          ${gear.length ? raw(h`
+            <p class="trgearline">${icon('box', { size: 14 })} Needs ${gear.join(' · ').toLowerCase()}</p>`) : raw('')}
+
           ${ready.length ? raw(ready.map((r) => stepUpCard(r)).join('')) : raw('')}
 
           <div class="section-title"><span>Is it working</span></div>
@@ -191,17 +194,16 @@ export const repsScreen = {
           <div class="section-title"><span>Where you stand</span></div>
           ${raw(ladderCard(state))}
 
-          <div class="card card--accent" style="padding:12px 14px">
-            ${raw(qaRow('Missing a day does nothing here',
-              'There is no streak on this screen and nothing to break. Strength does not fall off in a day, and the thing that actually stops people training is not the day off — it is the app that greets them on the way back with a broken counter. Everything counted here only ever goes up: days trained, points banked, how far up each ladder you stand. Take a week off and come back to exactly the numbers you left.'))}
-          </div>
-
-          ${gear.length ? raw(h`
-            <div class="card" style="padding:12px 14px">
-              ${raw(qaRow('What this round needs', gear.join(' · ')))}
-            </div>`) : raw('')}
-
-          ${raw(evidenceCard('exerciseMood', { full: true }))}
+          <details class="more">
+            <summary><span>Why there is no streak here</span><i class="more__count">2</i></summary>
+            <div class="stack" style="margin-top:12px">
+              <div class="card card--accent" style="padding:12px 14px">
+                ${raw(qaRow('Missing a day does nothing here',
+                  'There is no streak on this screen and nothing to break. Strength does not fall off in a day, and the thing that actually stops people training is not the day off — it is the app that greets them on the way back with a broken counter. Everything counted here only ever goes up: days trained, points banked, how far up each ladder you stand. Take a week off and come back to exactly the numbers you left.'))}
+              </div>
+              ${raw(evidenceCard('exerciseMood', { full: true }))}
+            </div>
+          </details>
         </div>
       </div>`;
   },
@@ -227,6 +229,12 @@ export const repsScreen = {
       },
       notyet:  (el, ds) => { declineStepUp(ds.mid); haptic(8); toast('Staying where you are. It will offer again when you move.', {}); refresh(); },
       edit:    () => openEditor(),
+      // Reps is reachable from Today, from Me and from the wallet's free list,
+      // so a fixed "‹ Today" was only right for one of the three. Go back where
+      // you came from, and fall back to Today when there is nowhere to go.
+      // `window.` is not decoration: this module imports a `history` of its own
+      // from core/training.js, and the bare name resolves to that one.
+      back:    () => { if (window.history.length > 1) window.history.back(); else go('today'); },
       pick:    (el, ds) => {
         const r = applyRoutine(ds.id);
         if (!r) return;
@@ -411,8 +419,10 @@ function chooseView() {
   return h`
     <div class="screen">
       <header class="screen__head">
-        <a href="#/today" class="muted" style="font-size:.85rem">‹ Today</a>
-        <div class="eyebrow" style="margin-top:8px">Reps</div>
+        <div class="row-between" style="margin-bottom:2px">
+          <div class="eyebrow">Reps</div>
+          <button class="backbtn" data-act="back">‹ Back</button>
+        </div>
         <h1>Pick a round</h1>
         <p class="muted" style="margin-top:6px;font-size:.9rem;line-height:1.5">
           A round is one set of each exercise. Do it once, or three times, or half of it — everything is counted and
@@ -784,7 +794,23 @@ function repaintRow(el, mid) {
  * Today can simply drop it in.
  */
 export function repsToday(state = getState()) {
-  if (!hasPlan(state)) return '';
+  // No round yet is still worth a row. This used to return '' and the only way
+  // in was a link inside Today's collapsed "More today" list — two taps and a
+  // disclosure to reach a free feature, which is two taps more than the thing
+  // is worth. The card is the way in either way now.
+  if (!hasPlan(state)) {
+    return h`
+      <button class="card trtoday trtoday--new" data-act="reps" style="width:100%;text-align:left">
+        <span class="row-between">
+          <span class="grow">
+            <span class="trtoday__k">${icon('jasad', { size: 15 })} Reps</span>
+            <span class="trtoday__t">Train indoors, from wherever you are now</span>
+            <span class="trtoday__s">Five movements, six versions of each. Picking a round takes about a minute.</span>
+          </span>
+          <span class="listrow__chev">›</span>
+        </span>
+      </button>`;
+  }
   const key = todayKey();
   const done = roundsDone(state, key);
   const goal = goalRounds(state);

@@ -37,44 +37,52 @@ export const vaultScreen = {
 
     return h`
       <div class="screen">
-        <header class="screen__head">
-          <a href="#/me" class="muted" style="font-size:.85rem">‹ Me</a>
-          <div class="eyebrow" style="margin-top:8px">The wallet</div>
-          <h1>What your XP is holding</h1>
+        <header class="screen__head screen__head--tight">
+          <div class="row-between" style="margin-bottom:2px">
+            <div class="eyebrow">The wallet</div>
+            <button class="backbtn" data-act="back">‹ Back</button>
+          </div>
+          <h1 style="margin:0">What your XP is holding</h1>
         </header>
 
         <div class="stack">
           ${raw(balanceCard(w, lv))}
 
-          <div class="card">
-            ${raw(qaRow('Nothing here is ever spent',
-              'XP is capacity, not currency. Everything you are running — every habit, every module — holds some of it while it is on, and hands every point back the moment you turn it off. Your level runs on lifetime XP and never falls, so there is no way to make a choice here that costs you a level or a slot. That is why it is safe to try something and change your mind.'))}
-          </div>
-
-          ${raw(committedCard(state, live, w, st))}
-
           ${openRows.length ? raw(h`
             <div class="section-title"><span>Available now</span></div>
             <div class="stack-sm">${openRows.map((r) => raw(unlockRow(r)))}</div>`) : raw('')}
-
-          ${aheadRows.length ? raw(h`
-            <div class="section-title"><span>Further up</span></div>
-            <div class="stack-sm">${aheadRows.map((r) => raw(unlockRow(r)))}</div>`) : raw('')}
 
           ${ownedRows.length ? raw(h`
             <div class="section-title"><span>Switched on</span></div>
             <div class="stack-sm">${ownedRows.map((r) => raw(unlockRow(r)))}</div>`) : raw('')}
 
-          <div class="section-title"><span>Never for sale</span></div>
-          <div class="card vault__free">
-            <p class="prose" style="margin:0 0 10px">
-              These are free permanently and will never appear above. Charging you
-              to reach the help, or to see the truth about your own week, would be
-              the worst thing this app could do.
-            </p>
-            ${ALWAYS_FREE.map((f) => raw(h`
-              <div class="vault__freerow">${icon(f.icon, { size: 16 })}<span>${f.label}</span></div>`))}
-          </div>
+          ${raw(committedCard(state, live, w, st))}
+
+          ${aheadRows.length ? raw(h`
+            <div class="section-title"><span>Further up</span></div>
+            <div class="card vault__ahead">${aheadRows.map((r) => raw(aheadRow(r)))}</div>`) : raw('')}
+
+          <details class="more">
+            <summary><span>What the numbers mean</span><i class="more__count">2</i></summary>
+            <div class="stack" style="margin-top:12px">
+              <div class="card">
+                ${raw(qaRow('Nothing here is ever spent',
+                  'XP is capacity, not currency. Everything you are running — every habit, every module — holds some of it while it is on, and hands every point back the moment you turn it off. Your level runs on lifetime XP and never falls, so there is no way to make a choice here that costs you a level or a slot. That is why it is safe to try something and change your mind.'))}
+              </div>
+
+              <div class="card vault__free">
+                <div class="card__title" style="margin-bottom:8px">Never for sale</div>
+                <p class="prose" style="margin:0 0 10px">
+                  These are free permanently and will never appear above. Charging you
+                  to reach the help, or to see the truth about your own week, would be
+                  the worst thing this app could do.
+                </p>
+                ${ALWAYS_FREE.map((f) => raw(f.href
+                  ? h`<a class="vault__freerow vault__freerow--go" href="${f.href}">${icon(f.icon, { size: 16 })}<span class="grow">${f.label}</span><span class="listrow__chev">›</span></a>`
+                  : h`<div class="vault__freerow">${icon(f.icon, { size: 16 })}<span>${f.label}</span></div>`))}
+              </div>
+            </div>
+          </details>
         </div>
       </div>`;
   },
@@ -116,6 +124,10 @@ export const vaultScreen = {
 
       open: (el, ds) => go(String(ds.href || '').replace(/^#\//, '')),
       habits: () => go('habits'),
+      // The wallet is reached from the top bar on every screen, so a fixed
+      // "‹ Me" was wrong four times out of five and cost a second tap to
+      // undo. Go back where you came from; fall back to Me with no history.
+      back: () => { if (window.history.length > 1) window.history.back(); else go('me'); },
     });
   },
 };
@@ -205,6 +217,29 @@ function committedCard(state, live, w, st) {
           The next habit slot opens at level ${st.nextAt} — and the budget, not the
           slot, is usually what decides whether you can fill it.
         </p>`) : raw('')}
+    </div>`;
+}
+
+/**
+ * The locked shelf, one line each.
+ *
+ * These were full cards, each with a blurb and a collapsed "Is this worth it?"
+ * under it, which put a screen and a half of reading you cannot act on between
+ * the thing you can buy and the thing you already own. Turning a module off is
+ * how you free XP up, so that was the most-wanted control on the screen sitting
+ * at the bottom of it. A name and the level it opens at is the whole story
+ * until it opens.
+ */
+function aheadRow(r) {
+  const d = r.def;
+  return h`
+    <div class="vault__ahead-row">
+      <span class="vault__ahead-ico">${icon('lock', { size: 14 })}</span>
+      <span class="grow">
+        <span class="vault__ahead-name">${d.label}</span>
+        <span class="vault__ahead-sub">${d.teaser}</span>
+      </span>
+      <span class="unlock__short">Level ${d.level}</span>
     </div>`;
 }
 

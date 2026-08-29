@@ -22,7 +22,6 @@ import { refresh, go } from '../core/router.js';
 import { classesOn, markAttendance, attendanceOverview, upcomingTasks, overdueTasks, toggleTask, ATTEND } from '../core/academics.js';
 import { openSos } from './sos.js';
 import { repsToday } from './reps.js';
-import { hasPlan } from '../core/training.js';
 import { sfx } from '../core/audio.js';
 import { icon } from '../ui/icons.js';
 import { streakState, milestoneDue, claimMilestone, pendingBreak, acknowledgeBreak,
@@ -91,10 +90,10 @@ export const todayScreen = {
       // Only advertise a module that is actually switched on — a shortcut into
       // a locked screen is a dead end dressed up as a suggestion.
       running || !isOwned('focus', state) ? '' : listLink('focus', icon('target'), 'Start a focus block'),
-      // Reps is free and has no gate, so the only question is whether a round
-      // exists yet. Once one does it moves up into the main stack, where it can
-      // show what is left of it — this row is the way in before that.
-      hasPlan(state) ? '' : listLink('reps', icon('jasad'), 'Set an indoor round'),
+      // Reps used to have a row here for the case where no round exists yet,
+      // which meant the one way into a free feature was a link inside a
+      // collapsed list. It has a card in the main stack in both states now —
+      // see repsToday() — so this row would only be a second copy of it.
       now >= 19 * 60 && isOwned('night', state) ? listLink('night', icon('moon'), 'Shutdown ritual') : '',
       listLink('ledger', icon('ledger'), 'The ledger'),
       h`<div class="card">${raw(passageCard(passage, { state }))}</div>`,

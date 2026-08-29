@@ -114,7 +114,12 @@ export const MOVEMENTS = {
   core: {
     id: 'core',
     label: 'Core',
-    emoji: '\u{1FAC0}',
+    // Was U+1FAC0, the anatomical heart. It is an Emoji 13.0 codepoint (2020)
+    // and the emoji font on Windows 10 and plenty of Android builds does not
+    // have it, so it drew as an empty box on the picker — on the two patterns
+    // a beginner is most likely to start with. Lotus is Emoji 5.0 and is the
+    // better glyph anyway: everything on this ladder is a position held.
+    emoji: '\u{1F9D8}',
     what: 'Abs, lower back, everything that holds you together',
     rungs: [
       { id: 'deadbug',   label: 'Dead bug',            short: 'dead bugs', target: 10, unit: UNIT.REPS, pts: 10, gear: 'none',
@@ -135,7 +140,8 @@ export const MOVEMENTS = {
   heart: {
     id: 'heart',
     label: 'Heart',
-    emoji: '\u{1FAC1}',
+    // Was U+1FAC1, lungs — same Emoji 13.0 problem, same empty box.
+    emoji: '\u{1F3C3}',
     what: 'Breath, stamina, the thing that runs out first',
     rungs: [
       { id: 'march',      label: 'March in place',   short: 'marching', target: 45, unit: UNIT.SEC,  pts: 8,  gear: 'none',

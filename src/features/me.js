@@ -21,6 +21,10 @@ import { records } from '../core/stats.js';
 import { canRecord, record, saveClip, deleteClip, playClip, MAX_SECONDS } from '../core/voice.js';
 import { isOwned, nextUnlock } from '../core/unlocks.js';
 import { wallet } from '../core/economy.js';
+import {
+  hasPlan as hasTrainingPlan, goalRounds as trainingGoal, roundsDone as trainingRounds,
+  dayScore as trainingScore, planLine as trainingPlanLine, roundWord as trainingWord,
+} from '../core/training.js';
 import { gateCard, gateMount } from '../ui/gate.js';
 import { startCoach } from './coach.js';
 import { icon } from '../ui/icons.js';
@@ -128,6 +132,12 @@ function renderProfile() {
             <span class="listrow__icon">${icon('box')}</span>
             <span class="grow"><span style="display:block;font-weight:620">The wallet</span>
               <span class="muted" style="font-size:.78rem">${walletLine(state)}</span></span>
+            <span class="listrow__chev">›</span>
+          </div>
+          <div class="listrow" data-act="reps">
+            <span class="listrow__icon">${icon('jasad')}</span>
+            <span class="grow"><span style="display:block;font-weight:620">Reps</span>
+              <span class="muted" style="font-size:.78rem">${repsLine(state)}</span></span>
             <span class="listrow__chev">›</span>
           </div>
           <div class="listrow" data-act="review">
@@ -428,6 +438,7 @@ function semesterLine(state) {
 function mountProfile(root) {
   actions(root, {
     vault: () => go('vault'),
+    reps:     () => go('reps'),
     review:   () => go('me/review'),
     ledger:   () => go('ledger'),
     science:  () => go('me/science'),
@@ -765,6 +776,24 @@ function voiceField(state) {
         </div>
       </div>
     </div>`;
+}
+
+/**
+ * One line summarising the training screen, for the More list.
+ *
+ * Reps had exactly one door — a card most of the way down Today — which is a
+ * long way to walk for a free feature from any other tab. Me is one tap from
+ * anywhere, so this is the second door.
+ */
+function repsLine(state) {
+  if (!hasTrainingPlan(state)) return 'Bodyweight ladders — no round set yet';
+  const key = todayKey();
+  const done = trainingRounds(state, key);
+  const goal = trainingGoal(state);
+  const word = trainingWord(state);
+  return done
+    ? `${done} of ${goal} ${word}${goal === 1 ? '' : 's'} today · ${trainingScore(state, key)} points`
+    : `${trainingPlanLine(state)} · nothing logged today`;
 }
 
 /** One line summarising the whole economy, for the More list. */

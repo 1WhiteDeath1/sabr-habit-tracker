@@ -51,6 +51,12 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
+  /* The app paints its own light theme, so say so. Without this the browser
+     resolves the UA system colours — `buttontext`, form control chrome,
+     scrollbars — against the OS setting instead, and a phone in dark mode
+     running the app in light mode gets white system text on white cards. */
+  color-scheme: light;
+
   /* Noor, the tutorial lamp. */
   --noor-metal: #e0ac00;
   --noor-glass: #fff4d4;
@@ -58,6 +64,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg:         #12191d;
   --surface:    #1a2328;
   --surface-2:  #1f292f;
@@ -317,6 +324,19 @@ em { font-style: normal; color: var(--text); font-weight: 700; }
 
 /* ----------------------------------------------------------- buttons --- */
 /* The signature: a button rests on a solid coloured edge and presses into it. */
+
+/* Every button here is a styled surface, never a system control, so none of
+   them wants the UA's chrome or its system colours.
+     - `color: inherit` because a bare <button class="card"> that sets no colour
+       of its own was taking `buttontext`, and on a phone whose OS is in dark
+       mode while the app is in light mode that resolves to white: the line
+       naming your round on Today was white text on a white card.
+     - `appearance: none` because with `color-scheme: dark` declared above,
+       Chrome paints its own dark button face over an author background on any
+       control still set to `appearance: auto` — which flattened the tan tap
+       target beside every movement on the Reps screen into system grey.
+   Specificity 0-0-1, so every rule below still wins. */
+button { color: inherit; appearance: none; -webkit-appearance: none; }
 
 .btn {
   appearance: none; border: 0; cursor: pointer;
@@ -1470,6 +1490,33 @@ body.is-coached { overflow: hidden; }
 .vault__freerow svg { flex: none; color: var(--accent); }
 .vault__free { background: var(--surface-2); }
 
+/* The free things that have a screen are links now, so the list that names
+   them is also the way to them. */
+a.vault__freerow--go { text-decoration: none; color: var(--text-2); border-radius: 8px; }
+a.vault__freerow--go:active { background: var(--surface-3); }
+a.vault__freerow--go .listrow__chev { color: var(--muted); }
+
+/* ---- the locked shelf, one line each ----------------------------------
+   Nothing here can be acted on, so it gets a list rather than three cards
+   of prose standing between what you can buy and what you can turn off. */
+.vault__ahead { padding: 4px 14px; }
+.vault__ahead-row {
+  display: flex; align-items: center; gap: 10px; padding: 11px 0;
+}
+.vault__ahead-row + .vault__ahead-row { border-top: 1px solid var(--border); }
+.vault__ahead-row .grow { min-width: 0; }
+.vault__ahead-ico {
+  width: 28px; height: 28px; flex: none; border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--surface-3); color: var(--muted);
+}
+.vault__ahead-name { display: block; font-weight: 750; font-size: .89rem; }
+.vault__ahead-sub {
+  display: block; font-size: .77rem; font-weight: 550; color: var(--muted);
+  margin-top: 1px; line-height: 1.4;
+}
+.vault__ahead-row .unlock__short { padding: 4px 9px; font-size: .7rem; }
+
 /* ---- one shelf row ---- */
 
 .unlock { padding: 13px 15px; }
@@ -1585,12 +1632,27 @@ body.is-coached { overflow: hidden; }
   .levelup__rank, .levelup__go, .lvrewards, .lvrow { animation: none; }
 }
 
-/* The XP chip is now a button into the wallet, so it needs a button reset. */
-#topbar .tb--xp {
-  appearance: none; background: none; border: 0; padding: 2px 4px;
-  cursor: pointer; font: inherit; border-radius: 10px;
+/* ---- the two chips that go somewhere ------------------------------------
+ * XP opens the wallet and the flame goes back to Today. Both used to be drawn
+ * exactly like the level beside them, which is a read-out and not a control —
+ * so the one tap that reaches the wallet looked like a number and nobody found
+ * it. They are pills now, with a chevron, and the level stays flat text. The
+ * difference between "this is a fact" and "this is a door" is worth 6px of
+ * padding. */
+#topbar .tb--tap {
+  appearance: none; font: inherit; cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 7px 4px 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-str);
+  transition: transform .12s var(--ease), background .12s var(--ease);
 }
-#topbar .tb--xp:active { transform: scale(.92); }
+#topbar .tb--tap .tb__go { font-style: normal; font-size: .82em; opacity: .5; margin-left: -1px; }
+#topbar .tb--tap:active { transform: translateY(1px) scale(.97); background: var(--surface-3); }
+#topbar .tb--xp { color: var(--gold); }
+/* A wallet with something in it is worth looking at; an empty one is not. */
+#topbar .tb--xp:not(.is-zero) { background: var(--gold-soft); border-color: var(--gold); }
 
 /* The wallet strip on Habits became a link into the Vault. */
 a.wallet { display: block; text-decoration: none; color: inherit; }
@@ -1839,8 +1901,11 @@ a.wallet { display: block; text-decoration: none; color: inherit; }
 }
 
 /* The top-bar run. Small on purpose — the number that carries the weight is
-   the lifetime total on Today, and this is a way back to it. */
-.tb--streak { gap: 3px; color: var(--flame-hot); }
+   the lifetime total on Today, and this is a way back to it. It used to be a
+   bare <button>, which the browser drew as a grey box: the one chip that got a
+   button's chrome was the one that mattered least. Both chips share .tb--tap
+   now and this only sets the colour. */
+.tb--streak { color: var(--flame-hot); }
 .tb--streak.is-cold { color: var(--muted); opacity: .75; }
 
 /* ====================================================================== */
@@ -2394,6 +2459,31 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
 /* ====================================================================== */
 
 .screen__head--tight { margin-bottom: 6px; }
+
+/* A back control that goes back rather than to a fixed screen. The screens
+   that can be reached from more than one place used to name one of them in
+   the corner, which was wrong most of the time and cost a second tap to
+   undo. Small, quiet, and a real 40px target. */
+.backbtn {
+  appearance: none; border: 0; background: none; font: inherit;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 6px 9px; margin: -6px -9px -6px 0;
+  border-radius: 999px; cursor: pointer;
+  font-size: .78rem; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted);
+}
+.backbtn:active { background: var(--surface-3); color: var(--text-2); }
+
+/* What the round needs, said once where you can act on it — before you start,
+   not in a card at the bottom of the screen behind a "?" */
+.trgearline {
+  display: flex; align-items: center; gap: 6px; justify-content: center;
+  margin: 0; font-size: .78rem; font-weight: 700; color: var(--muted);
+}
+.trgearline svg { flex: none; }
+
+/* The Today row before a round exists: an invitation rather than a read-out. */
+.trtoday--new { border-style: dashed; border-color: var(--border-str); }
 
 /* ---- the crest ---- */
 
