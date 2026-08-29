@@ -789,45 +789,46 @@ function repaintRow(el, mid) {
 /* ------------------------------------------------------------------ Today */
 
 /**
- * The compact version for the Today screen: what today's round is, how much of
- * it is done, and one tap to the rest. Returns '' when no round is set, so
- * Today can simply drop it in.
+ * Reps on Today, as one icon in the header.
+ *
+ * This was a full-width card at the bottom of the habit list. Today's whole
+ * argument is that it answers one question, and a second card advertising a
+ * second screen is the app talking about itself in the middle of it. An icon
+ * says the same three things — that Reps exists, whether you have trained, how
+ * far through the round you are — in a fortieth of the space, and the round
+ * itself is one tap behind it where it always was.
+ *
+ * Never returns '': with no round set it is the invitation, drawn dashed.
  */
-export function repsToday(state = getState()) {
-  // No round yet is still worth a row. This used to return '' and the only way
-  // in was a link inside Today's collapsed "More today" list — two taps and a
-  // disclosure to reach a free feature, which is two taps more than the thing
-  // is worth. The card is the way in either way now.
-  if (!hasPlan(state)) {
-    return h`
-      <button class="card trtoday trtoday--new" data-act="reps" style="width:100%;text-align:left">
-        <span class="row-between">
-          <span class="grow">
-            <span class="trtoday__k">${icon('jasad', { size: 15 })} Reps</span>
-            <span class="trtoday__t">Train indoors, from wherever you are now</span>
-            <span class="trtoday__s">Five movements, six versions of each. Picking a round takes about a minute.</span>
-          </span>
-          <span class="listrow__chev">›</span>
-        </span>
-      </button>`;
-  }
+export function repsChip(state = getState()) {
+  const has = hasPlan(state);
   const key = todayKey();
-  const done = roundsDone(state, key);
-  const goal = goalRounds(state);
-  const sets = dayLog(state, key).sets.length;
+  const goal = has ? goalRounds(state) : 0;
+  const done = has ? roundsDone(state, key) : 0;
+  const sets = has ? dayLog(state, key).sets.length : 0;
   const word = roundWord(state);
+  const met = has && goal && done >= goal;
+  // Sets rather than completed rounds. Rounds are the unit the Reps screen
+  // headlines and the right one for a sentence, but they only tick over when
+  // the last movement of a set of them lands — so the bar would sit at zero
+  // beside a badge reading 1, which looks broken rather than honest.
+  const owed = has ? plan(state).length * Math.max(1, goal) : 0;
+  const pct = owed ? Math.min(1, sets / owed) * 100 : 0;
+
+  // The whole card's text lives here. It is the accessible name and the
+  // hover title, so nothing that was on the card is actually gone.
+  const label = !has
+    ? 'Reps \u2014 no round set yet. Bodyweight ladders, indoors.'
+    : sets === 0
+      ? `Reps \u2014 ${planLine(state)}. ${goal} ${word}${goal === 1 ? '' : 's'} today, nothing logged yet.`
+      : `Reps \u2014 ${done} of ${goal} ${word}${goal === 1 ? '' : 's'} today, ${dayScore(state, key)} points.`;
 
   return h`
-    <button class="card trtoday${sets ? ' is-started' : ''}" data-act="reps" style="width:100%;text-align:left">
-      <span class="row-between">
-        <span class="grow">
-          <span class="trtoday__k">${icon('jasad', { size: 15 })} Reps</span>
-          <span class="trtoday__t">${planLine(state)}</span>
-          <span class="trtoday__s">${sets === 0
-            ? `${goal} ${word}${goal === 1 ? '' : 's'} today · nothing logged yet`
-            : `${done} of ${goal} ${word}${goal === 1 ? '' : 's'} · ${dayScore(state, key)} points`}</span>
-        </span>
-        <span class="listrow__chev">›</span>
-      </span>
+    <button class="repsico${has ? '' : ' is-new'}${sets ? ' is-started' : ''}${met ? ' is-met' : ''}"
+            data-act="reps" aria-label="${label}" title="${label}">
+      <span class="repsico__i">${icon(met ? 'check' : 'jasad', { size: 21 })}</span>
+      ${has ? raw(h`<i class="repsico__bar" aria-hidden="true"><i style="width:${pct.toFixed(1)}%"></i></i>`) : raw('')}
+      ${sets ? raw(h`<span class="repsico__n">${sets}</span>`) : raw('')}
+      ${has ? raw('') : raw(h`<span class="repsico__n repsico__n--new" aria-hidden="true">+</span>`)}
     </button>`;
 }

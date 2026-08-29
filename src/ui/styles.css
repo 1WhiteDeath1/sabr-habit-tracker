@@ -2482,8 +2482,6 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
 }
 .trgearline svg { flex: none; }
 
-/* The Today row before a round exists: an invitation rather than a read-out. */
-.trtoday--new { border-style: dashed; border-color: var(--border-str); }
 
 /* ---- the crest ---- */
 
@@ -3584,20 +3582,63 @@ h2, h3 { letter-spacing: -.015em; font-weight: 680; }
   text-transform: uppercase; letter-spacing: .04em;
 }
 
-/* ---- the row on Today ---- */
+/* ---- Reps on Today, as one icon ----------------------------------------
+   Was a full-width card sitting under the habit list. Today answers one
+   question, and a card advertising a second screen in the middle of it is the
+   app talking about itself. The icon carries the same three facts — that Reps
+   exists, whether you have trained, how far through the round you are — and
+   the sentence that used to be printed on the card is its accessible name. */
 
-.trtoday {
-  display: block; border-color: var(--border); cursor: pointer;
-  box-shadow: 0 var(--lift) 0 var(--border); padding: 13px 15px;
+.repsico {
+  position: relative; flex: none;
+  width: 48px; height: 48px; margin-top: 2px;
+  border-radius: 15px; cursor: pointer;
+  border: 1px solid var(--border-str);
+  background: var(--surface-2); color: var(--orange-edge);
+  display: grid; place-items: center;
+  box-shadow: 0 var(--lift) 0 var(--border-str);
+  transition: transform .08s var(--ease), box-shadow .08s var(--ease);
 }
-.trtoday:active { transform: translateY(var(--lift)); box-shadow: 0 0 0 var(--border); }
-.trtoday.is-started { border-color: var(--orange); }
-.trtoday__k {
-  display: flex; align-items: center; gap: 6px; font-size: .68rem; font-weight: 850;
-  letter-spacing: .08em; text-transform: uppercase; color: var(--orange);
+.repsico:active { transform: translateY(var(--lift)); box-shadow: 0 0 0 var(--border-str); }
+[data-theme="dark"] .repsico { background: var(--surface-3); color: var(--orange); }
+
+/* Nothing set up yet: an invitation, not a read-out. */
+.repsico.is-new { border-style: dashed; color: var(--muted); box-shadow: none; }
+.repsico.is-new:active { transform: none; }
+
+/* Something logged today. */
+.repsico.is-started { border-color: var(--orange); }
+.repsico.is-met {
+  background: var(--orange); border-color: var(--orange-edge); color: #fff;
+  box-shadow: 0 var(--lift) 0 var(--orange-edge);
 }
-.trtoday__t { display: block; font-weight: 800; font-size: .93rem; margin-top: 5px; }
-.trtoday__s { display: block; font-size: .78rem; font-weight: 650; color: var(--muted); margin-top: 3px; }
+.repsico.is-met:active { box-shadow: 0 0 0 var(--orange-edge); }
+
+.repsico__i { display: grid; place-items: center; }
+
+/* How far through the round, along the bottom edge. Two pixels is enough to
+   read at a glance and small enough not to become a second control. */
+.repsico__bar {
+  position: absolute; left: 8px; right: 8px; bottom: 6px; height: 3px;
+  border-radius: 2px; background: var(--border-str); overflow: hidden;
+}
+.repsico.is-met .repsico__bar { background: rgba(255, 255, 255, .45); }
+.repsico__bar > i { display: block; height: 100%; background: var(--orange); border-radius: 2px; }
+.repsico.is-met .repsico__bar > i { background: #fff; }
+
+/* Sets logged today. Only ever appears once there is something to count. */
+.repsico__n {
+  position: absolute; top: -5px; right: -5px;
+  min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 9px; background: var(--orange); color: #fff;
+  border: 1.5px solid var(--bg);
+  font-size: .62rem; font-weight: 850; font-variant-numeric: tabular-nums;
+  display: grid; place-items: center;
+}
+/* Nothing set up: a plus, because a dashed square with a mark in it says a
+   feature exists but not that it is waiting for you to start it. Grey, to
+   stay in the same register as the dashed square it sits on. */
+.repsico__n--new { background: var(--muted); font-size: .8rem; font-weight: 800; }
 
 /* ---- rest between sets ----
    Sits above the nav rather than inside the screen, because logging a set

@@ -21,7 +21,7 @@ import { habitRow, passageCard, dayRing, timeGroup, evidenceCard, attrColorFor, 
 import { refresh, go } from '../core/router.js';
 import { classesOn, markAttendance, attendanceOverview, upcomingTasks, overdueTasks, toggleTask, ATTEND } from '../core/academics.js';
 import { openSos } from './sos.js';
-import { repsToday } from './reps.js';
+import { repsChip } from './reps.js';
 import { sfx } from '../core/audio.js';
 import { icon } from '../ui/icons.js';
 import { streakState, milestoneDue, claimMilestone, pendingBreak, acknowledgeBreak,
@@ -92,8 +92,8 @@ export const todayScreen = {
       running || !isOwned('focus', state) ? '' : listLink('focus', icon('target'), 'Start a focus block'),
       // Reps used to have a row here for the case where no round exists yet,
       // which meant the one way into a free feature was a link inside a
-      // collapsed list. It has a card in the main stack in both states now —
-      // see repsToday() — so this row would only be a second copy of it.
+      // collapsed list. It is an icon in this screen's header in both states
+      // now — see repsChip() — so this row would only be a second copy of it.
       now >= 19 * 60 && isOwned('night', state) ? listLink('night', icon('moon'), 'Shutdown ritual') : '',
       listLink('ledger', icon('ledger'), 'The ledger'),
       h`<div class="card">${raw(passageCard(passage, { state }))}</div>`,
@@ -102,8 +102,13 @@ export const todayScreen = {
     return h`
       <div class="screen">
         <header class="screen__head" style="margin-bottom:12px">
-          <div class="eyebrow">${prettyDayLong(key)}</div>
-          <h1>${greeting(now)}${name}</h1>
+          <div class="row-between">
+            <div class="grow">
+              <div class="eyebrow">${prettyDayLong(key)}</div>
+              <h1 style="margin:0">${greeting(now)}${name}</h1>
+            </div>
+            ${raw(repsChip(state))}
+          </div>
         </header>
 
         <div class="stack">
@@ -147,8 +152,6 @@ export const todayScreen = {
             ${raw(phaseMark(g.label, g.at, g.id === win.current))}
             ${g.items.map((it) => raw(habitRow(it.habit, key, { state, camp })))}
           `).join(''))}
-
-          ${raw(repsToday(state))}
 
           ${later.length ? raw(h`
             <details class="more">
